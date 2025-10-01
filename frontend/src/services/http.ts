@@ -1,8 +1,10 @@
 import axios, { type AxiosError, type AxiosRequestConfig } from "axios";
 import { refresh } from "./auth";
 
+const baseURL = (import.meta.env.VITE_API_BASE_URL ?? "").trim() || "/api";
+
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_BASE_URL,
+  baseURL,
   withCredentials: false,
   timeout: 15000,
 });
@@ -62,3 +64,4 @@ api.interceptors.response.use(
 );
 
 export default api;
+
