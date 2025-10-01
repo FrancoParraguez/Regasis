@@ -1,4 +1,4 @@
-﻿import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Topbar } from "./components/layout/Topbar";
 import { Sidebar } from "./components/layout/Sidebar";
 import AdminCursos from "./pages/AdminCursos";
@@ -26,21 +26,19 @@ export default function App(){
   const [route, setRoute] = useState<string>("/cursos");
   const [menuOpen, setMenuOpen] = useState(false);
   const { user } = useAuth();
-
-  if(!user) return <Login/>;
-
   const role = (user?.role || "ADMIN") as "ADMIN"|"INSTRUCTOR"|"REPORTER";
 
   useEffect(() => {
+    if(!user) return;
     if(!canAccess(route, role)){
       const fallback = role === "ADMIN" ? "/cursos" : role === "INSTRUCTOR" ? "/asistencia" : "/reportes";
       setRoute(fallback);
     }
-  }, [route, role]);
+  }, [route, role, user]);
 
   const page = useMemo(() => {
     if(!canAccess(route, role)) return (
-      <div className="card p-6 text-sm text-gray-700">403 Â· No tienes permisos para acceder a esta secciÃ³n.</div>
+      <div className="card p-6 text-sm text-gray-700">403 · No tienes permisos para acceder a esta sección.</div>
     );
     if(route === "/cursos") return <AdminCursos/>;
     if(route === "/importaciones") return <AdminImportaciones/>;
@@ -52,6 +50,8 @@ export default function App(){
     if(route === "/perfil") return <Perfil/>;
     return null;
   }, [route, role]);
+
+  if(!user) return <Login/>;
 
   return (
     <div className="min-h-screen bg-gray-50 text-gray-800">
