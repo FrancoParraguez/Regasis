@@ -16,29 +16,29 @@ const durationMultipliers: Record<DurationUnit, number> = {
   h: 3_600_000,
   d: 86_400_000,
   w: 604_800_000,
-  y: 31_557_600_000 // 365.25 days
+  y: 31_557_600_000
 };
 
 function durationToMs(duration: DurationValue): number {
-  if(typeof duration === "number"){
-    if(!Number.isFinite(duration)){
+  if (typeof duration === "number") {
+    if (!Number.isFinite(duration)) {
       throw new Error(`Duración inválida: ${duration}`);
     }
     return duration;
   }
 
   const trimmed = duration.trim();
-  if(trimmed === ""){
+  if (trimmed === "") {
     throw new Error("Duración inválida: cadena vacía");
   }
 
   const numeric = Number(trimmed);
-  if(Number.isFinite(numeric) && /^[-+]?\d+(?:\.\d+)?$/.test(trimmed)){
+  if (Number.isFinite(numeric) && /^[-+]?\d+(?:\.\d+)?$/.test(trimmed)) {
     return numeric;
   }
 
   const match = trimmed.match(/^([-+]?\d+(?:\.\d+)?)(ms|s|m|h|d|w|y)$/i);
-  if(!match){
+  if (!match) {
     throw new Error(`Duración inválida: ${duration}`);
   }
 
@@ -48,10 +48,10 @@ function durationToMs(duration: DurationValue): number {
   return value * multiplier;
 }
 
-function addDuration(base: Date, duration: DurationValue){
+function addDuration(base: Date, duration: DurationValue) {
   const baseDate = new Date(base);
   const durationMs = durationToMs(duration);
-  if(durationMs < 0){
+  if (durationMs < 0) {
     throw new Error(`Duración inválida: ${duration}`);
   }
   baseDate.setTime(baseDate.getTime() + durationMs);
@@ -61,9 +61,9 @@ function addDuration(base: Date, duration: DurationValue){
 router.post("/login", async (req, res) => {
   const { email, password } = req.body as { email: string; password: string };
   const user = await prisma.user.findUnique({ where: { email } });
-  if(!user) return res.status(401).json({ error: "Credenciales inválidas" });
+  if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
   const ok = await comparePassword(password, user.password);
-  if(!ok) return res.status(401).json({ error: "Credenciales inválidas" });
+  if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
 
   const accessToken = signAccessToken({ role: user.role, providerId: user.providerId }, user.id);
   const jti = newJti();
@@ -73,29 +73,57 @@ router.post("/login", async (req, res) => {
   res.json({
     token: accessToken,
     refreshToken: jti,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, providerId: user.providerId }
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      providerId: user.providerId
+    }
   });
 });
 
 router.post("/refresh", async (req, res) => {
   const { refreshToken } = req.body as { refreshToken: string };
-  if(!refreshToken) return res.status(400).json({ error: "refreshToken requerido" });
-  const rt = await prisma.refreshToken.findUnique({ where: { jti: refreshToken }, include: { user: true } });
-  if(!rt || rt.revoked || rt.expiresAt < new Date()) return res.status(401).json({ error: "refreshToken inválido" });
+  if (!refreshToken) return res.status(400).json({ error: "refreshToken requerido" });
 
-  await prisma.refreshToken.update({ where: { jti: refreshToken }, data: { revoked: true } });
+  const rt = await prisma.refreshToken.findUnique({
+    where: { jti: refreshToken },
+    include: { user: true }
+  });
+
+  if (!rt || rt.revoked || rt.expiresAt < new Date()) {
+    return res.status(401).json({ error: "refreshToken inválido" });
+  }
+
+  await prisma.refreshToken.update({
+    where: { jti: refreshToken },
+    data: { revoked: true }
+  });
+
   const jti = newJti();
   const expiresAt = addDuration(new Date(), env.REFRESH_EXPIRES);
   await prisma.refreshToken.create({ data: { jti, userId: rt.userId, expiresAt } });
 
-  const token = signAccessToken({ role: rt.user.role, providerId: rt.user.providerId }, rt.userId);
+  const token = signAccessToken(
+    { role: rt.user.role, providerId: rt.user.providerId },
+    rt.userId
+  );
+
   res.json({ token, refreshToken: jti });
 });
 
 router.post("/logout", async (req, res) => {
   const { refreshToken } = req.body as { refreshToken: string };
-  if(refreshToken){
-    try{ await prisma.refreshToken.update({ where: { jti: refreshToken }, data: { revoked: true } }); }catch{}
+  if (refreshToken) {
+    try {
+      await prisma.refreshToken.update({
+        where: { jti: refreshToken },
+        data: { revoked: true }
+      });
+    } catch {
+      // Silent catch: refresh token may not exist or already be revoked
+    }
   }
   res.json({ ok: true });
 });
