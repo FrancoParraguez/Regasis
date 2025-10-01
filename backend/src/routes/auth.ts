@@ -62,6 +62,7 @@ router.post("/login", async (req, res) => {
   const { email, password } = req.body as { email: string; password: string };
   const user = await prisma.user.findUnique({ where: { email } });
   if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
+
   const ok = await comparePassword(password, user.password);
   if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
 
