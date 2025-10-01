@@ -1,0 +1,21 @@
+﻿import { Router } from "express";
+import authRouter from "./auth.js";
+import coursesRouter from "./courses.js";
+import sessionsRouter from "./sessions.js";
+import attendanceRouter from "./attendance.js";
+import gradesRouter from "./grades.js";
+import reportsRouter from "./reports.js";
+import importsRouter from "./imports.js";
+import auditRouter from "./audit.js";
+import { auth } from "../middleware/auth.js";
+
+const router = Router();
+router.use("/auth", auth(false), authRouter);
+router.use("/cursos", auth(), coursesRouter);
+router.use("/sesiones", auth(), sessionsRouter);
+router.use("/asistencias", auth(), attendanceRouter);
+router.use("/notas", auth(), gradesRouter);
+router.use("/reportes", auth(), reportsRouter);
+router.use("/importaciones", auth(), importsRouter);
+router.use("/auditoria", auth(), auditRouter);
+export default router;

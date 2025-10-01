@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  ADMIN
+  INSTRUCTOR
+  REPORTER
+}
+
+enum AttendanceState {
+  PRESENTE
+  AUSENTE
+  JUSTIFICADO
+}
+
+enum GradeType {
+  P1
+  P2
+  EXAMEN
+  PRACTICA
+  OTRO
+}
+
+model Provider {
+  id           String        @id @default(cuid())
+  name         String        @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  users        User[]
+  courses      Course[]
+  participants Participant[]   // inverso de Participant.provider
+}
+
+model User {
+  id                 String        @id @default(cuid())
+  email              String        @unique
+  name               String
+  password           String
+  role               Role
+  providerId         String?
+  provider           Provider?     @relation(fields: [providerId], references: [id])
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+  instructorOf       CourseInstructor[]
+  auditLogs          AuditLog[]
+  refreshTokens      RefreshToken[]
+  updatedAttendances Attendance[]  @relation("UserUpdatedAttendances") // inverso de Attendance.updatedBy
+}
+
+model Course {
+  id          String            @id @default(cuid())
+  code        String            @unique
+  name        String
+  startDate   DateTime
+  endDate     DateTime
+  providerId  String
+  provider    Provider          @relation(fields: [providerId], references: [id])
+  instructors CourseInstructor[]
+  sessions    Session[]
+  enrollments Enrollment[]
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+}
+
+model CourseInstructor {
+  id       String @id @default(cuid())
+  courseId String
+  userId   String
+  course   Course @relation(fields: [courseId], references: [id])
+  user     User   @relation(fields: [userId], references: [id])
+
+  @@unique([courseId, userId])
+}
+
+model Participant {
+  id         String       @id @default(cuid())
+  email      String       @unique
+  name       String
+  providerId String?
+  provider   Provider?    @relation(fields: [providerId], references: [id])
+  enrollments Enrollment[]
+  createdAt  DateTime     @default(now())
+  updatedAt  DateTime     @updatedAt
+}
+
+model Enrollment {
+  id            String       @id @default(cuid())
+  participantId String
+  courseId      String
+  participant   Participant  @relation(fields: [participantId], references: [id])
+  course        Course       @relation(fields: [courseId], references: [id])
+  attendance    Attendance[]   // inverso de Attendance.enrollment
+  grades        Grade[]        // inverso de Grade.enrollment
+  createdAt     DateTime     @default(now())
+
+  @@unique([participantId, courseId])
+}
+
+model Session {
+  id        String       @id @default(cuid())
+  courseId  String
+  date      DateTime
+  course    Course       @relation(fields: [courseId], references: [id])
+  attendance Attendance[]
+}
+
+model Attendance {
+  id            String     @id @default(cuid())
+  sessionId     String
+  enrollmentId  String
+  state         AttendanceState
+  observation   String?
+  session       Session    @relation(fields: [sessionId], references: [id])
+  enrollment    Enrollment @relation(fields: [enrollmentId], references: [id])
+  updatedById   String?
+  updatedBy     User?      @relation("UserUpdatedAttendances", fields: [updatedById], references: [id])
+  updatedAt     DateTime   @updatedAt
+  createdAt     DateTime   @default(now())
+
+  @@unique([sessionId, enrollmentId])
+}
+
+model Grade {
+  id           String     @id @default(cuid())
+  enrollmentId String
+  type         GradeType
+  score        Float
+  date         DateTime   @default(now())
+  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id])
+  action    String
+  method    String
+  path      String
+  status    Int
+  ip        String?
+  metadata  Json?
+  createdAt DateTime @default(now())
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  jti       String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+  expiresAt DateTime
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
