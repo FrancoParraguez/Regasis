@@ -1,49 +1,64 @@
-﻿import axios from "axios";
+import axios, { type AxiosError, type AxiosRequestConfig } from "axios";
 import { refresh } from "./auth";
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL,
   withCredentials: false,
-  timeout: 15000
+  timeout: 15000,
 });
 
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) {
-    config.headers = config.headers || {};
-    (config.headers as any).Authorization = `Bearer ${token}`;
+    config.headers = config.headers
+      ? { ...config.headers, Authorization: `Bearer ${token}` }
+      : { Authorization: `Bearer ${token}` };
   }
   return config;
 });
 
-let refreshing = false as boolean;
-let queue: { resolve: (v?: any)=>void; reject: (e: any)=>void }[] = [];
+interface RetryConfig extends AxiosRequestConfig {
+  _retry?: boolean;
+}
 
-api.interceptors.response.use((r) => r, async (err) => {
-  const original: any = err.config || {};
-  if(err.response?.status === 401 && !original._retry){
-    original._retry = true;
-    try{
-      if(!refreshing){
-        refreshing = true;
-        await refresh();
-        refreshing = false;
-        queue.forEach(p => p.resolve(true));
+type QueueEntry = { resolve: () => void; reject: (reason?: unknown) => void };
+
+let refreshing = false;
+let queue: QueueEntry[] = [];
+
+api.interceptors.response.use(
+  (response) => response,
+  async (error: AxiosError) => {
+    const original = (error.config ?? {}) as RetryConfig;
+    if (error.response?.status === 401 && !original._retry) {
+      original._retry = true;
+      try {
+        if (!refreshing) {
+          refreshing = true;
+          await refresh();
+          refreshing = false;
+          queue.forEach((entry) => entry.resolve());
+          queue = [];
+        } else {
+          await new Promise<void>((resolve, reject) => queue.push({ resolve, reject }));
+        }
+        const token = localStorage.getItem("token");
+        if (token) {
+          original.headers = {
+            ...original.headers,
+            Authorization: `Bearer ${token}`,
+          };
+        }
+        return api(original);
+      } catch (refreshError) {
+        queue.forEach((entry) => entry.reject(refreshError));
         queue = [];
-      }else{
-        await new Promise((resolve, reject) => queue.push({ resolve, reject }));
+        refreshing = false;
+        return Promise.reject(refreshError);
       }
-      original.headers = original.headers || {};
-      original.headers.Authorization = `Bearer ${localStorage.getItem("token")}`;
-      return api(original);
-    }catch(e){
-      queue.forEach(p => p.reject(e));
-      queue = [];
-      refreshing = false;
-      return Promise.reject(e);
     }
+    return Promise.reject(error);
   }
-  return Promise.reject(err);
-});
+);
 
 export default api;

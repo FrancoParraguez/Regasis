@@ -16,7 +16,7 @@ const durationMultipliers: Record<DurationUnit, number> = {
   h: 3_600_000,
   d: 86_400_000,
   w: 604_800_000,
-  y: 31_557_600_000
+  y: 31_557_600_000 // 365.25 days
 };
 
 function durationToMs(duration: DurationValue): number {
@@ -66,10 +66,16 @@ router.post("/login", async (req, res) => {
   const ok = await comparePassword(password, user.password);
   if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
 
-  const accessToken = signAccessToken({ role: user.role, providerId: user.providerId }, user.id);
+  const accessToken = signAccessToken(
+    { role: user.role, providerId: user.providerId },
+    user.id
+  );
+
   const jti = newJti();
   const expiresAt = addDuration(new Date(), env.REFRESH_EXPIRES);
-  await prisma.refreshToken.create({ data: { jti, userId: user.id, expiresAt } });
+  await prisma.refreshToken.create({
+    data: { jti, userId: user.id, expiresAt }
+  });
 
   res.json({
     token: accessToken,
@@ -86,7 +92,9 @@ router.post("/login", async (req, res) => {
 
 router.post("/refresh", async (req, res) => {
   const { refreshToken } = req.body as { refreshToken: string };
-  if (!refreshToken) return res.status(400).json({ error: "refreshToken requerido" });
+  if (!refreshToken) {
+    return res.status(400).json({ error: "refreshToken requerido" });
+  }
 
   const rt = await prisma.refreshToken.findUnique({
     where: { jti: refreshToken },
@@ -104,7 +112,9 @@ router.post("/refresh", async (req, res) => {
 
   const jti = newJti();
   const expiresAt = addDuration(new Date(), env.REFRESH_EXPIRES);
-  await prisma.refreshToken.create({ data: { jti, userId: rt.userId, expiresAt } });
+  await prisma.refreshToken.create({
+    data: { jti, userId: rt.userId, expiresAt }
+  });
 
   const token = signAccessToken(
     { role: rt.user.role, providerId: rt.user.providerId },
