@@ -73,22 +73,43 @@ router.post("/login", async (req, res) => {
   res.json({
     token: accessToken,
     refreshToken: jti,
-    user: { id: user.id, name: user.name, email: user.email, role: user.role, providerId: user.providerId }
+    user: {
+      id: user.id,
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      providerId: user.providerId
+    }
   });
 });
 
 router.post("/refresh", async (req, res) => {
   const { refreshToken } = req.body as { refreshToken: string };
   if (!refreshToken) return res.status(400).json({ error: "refreshToken requerido" });
-  const rt = await prisma.refreshToken.findUnique({ where: { jti: refreshToken }, include: { user: true } });
-  if (!rt || rt.revoked || rt.expiresAt < new Date()) return res.status(401).json({ error: "refreshToken inválido" });
 
-  await prisma.refreshToken.update({ where: { jti: refreshToken }, data: { revoked: true } });
+  const rt = await prisma.refreshToken.findUnique({
+    where: { jti: refreshToken },
+    include: { user: true }
+  });
+
+  if (!rt || rt.revoked || rt.expiresAt < new Date()) {
+    return res.status(401).json({ error: "refreshToken inválido" });
+  }
+
+  await prisma.refreshToken.update({
+    where: { jti: refreshToken },
+    data: { revoked: true }
+  });
+
   const jti = newJti();
   const expiresAt = addDuration(new Date(), env.REFRESH_EXPIRES);
   await prisma.refreshToken.create({ data: { jti, userId: rt.userId, expiresAt } });
 
-  const token = signAccessToken({ role: rt.user.role, providerId: rt.user.providerId }, rt.userId);
+  const token = signAccessToken(
+    { role: rt.user.role, providerId: rt.user.providerId },
+    rt.userId
+  );
+
   res.json({ token, refreshToken: jti });
 });
 
@@ -96,8 +117,13 @@ router.post("/logout", async (req, res) => {
   const { refreshToken } = req.body as { refreshToken: string };
   if (refreshToken) {
     try {
-      await prisma.refreshToken.update({ where: { jti: refreshToken }, data: { revoked: true } });
-    } catch {}
+      await prisma.refreshToken.update({
+        where: { jti: refreshToken },
+        data: { revoked: true }
+      });
+    } catch {
+      // Silent catch: refresh token may not exist or already be revoked
+    }
   }
   res.json({ ok: true });
 });
