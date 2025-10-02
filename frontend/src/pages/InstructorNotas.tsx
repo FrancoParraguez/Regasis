@@ -61,13 +61,33 @@ export default function InstructorNotas() {
   }, [cursoId]);
 
   function formatRows(data: GradeDTO[]): NotaRow[] {
-    return data.map((nota) => ({
-      id: nota.id,
-      participante: nota.enrollment?.participant?.name ?? "",
-      tipo: nota.type,
-      nota: nota.score.toFixed(1),
-      fecha: nota.date.slice(0, 10)
-    }));
+    return data.map((nota) => {
+      const participantName =
+        nota.enrollment?.participant?.name?.trim() ||
+        nota.enrollment?.participant?.email?.trim() ||
+        nota.enrollmentId;
+
+      const scoreValue =
+        typeof nota.score === "number" ? nota.score : Number(nota.score);
+      const formattedScore = Number.isFinite(scoreValue)
+        ? scoreValue.toFixed(1)
+        : "";
+
+      const dateValue =
+        typeof nota.date === "string" && nota.date.length > 0
+          ? nota.date.slice(0, 10)
+          : "";
+
+      const gradeType = (nota.type ?? "OTRO") as GradeType;
+
+      return {
+        id: nota.id,
+        participante: participantName,
+        tipo: gradeType,
+        nota: formattedScore,
+        fecha: dateValue
+      };
+    });
   }
 
   async function agregar() {
