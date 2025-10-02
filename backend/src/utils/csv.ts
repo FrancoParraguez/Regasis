@@ -20,7 +20,9 @@ function detectDelimiter(buffer: Buffer): string {
   return bestCount > 0 ? bestDelimiter : ",";
 }
 
-export async function parseCsv(buffer: Buffer): Promise<Record<string, string>[]> {
+export async function parseCsv(
+  buffer: Buffer
+): Promise<Record<string, string>[]> {
   const delimiter = detectDelimiter(buffer);
 
   return new Promise((resolve, reject) => {
@@ -30,6 +32,7 @@ export async function parseCsv(buffer: Buffer): Promise<Record<string, string>[]
       skip_empty_lines: true,
       trim: true,
       delimiter,
+      bom: true
     });
 
     parser.on("readable", () => {
