@@ -22,11 +22,12 @@ function detectDelimiter(buffer: Buffer): string {
 }
 
 function isLikelyXlsx(buffer: Buffer, mimetype?: string) {
-  if (mimetype && mimetype.includes("spreadsheetml")) {
-    return true;
-  }
-
-  return buffer.length >= 4 && buffer.slice(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]));
+  if (mimetype && mimetype.includes("spreadsheetml")) return true;
+  // XLSX files are just zip files (start with PK header)
+  return (
+    buffer.length >= 4 &&
+    buffer.slice(0, 4).equals(Buffer.from([0x50, 0x4b, 0x03, 0x04]))
+  );
 }
 
 function parseCsvBuffer(buffer: Buffer): Promise<Record<string, string>[]> {
@@ -39,7 +40,7 @@ function parseCsvBuffer(buffer: Buffer): Promise<Record<string, string>[]> {
       skip_empty_lines: true,
       trim: true,
       delimiter,
-      bom: true,
+      bom: true, // handles UTF-8 BOM correctly
     });
 
     parser.on("readable", () => {
@@ -48,8 +49,10 @@ function parseCsvBuffer(buffer: Buffer): Promise<Record<string, string>[]> {
         rows.push(record);
       }
     });
+
     parser.on("error", reject);
     parser.on("end", () => resolve(rows));
+
     parser.write(buffer);
     parser.end();
   });
@@ -58,10 +61,7 @@ function parseCsvBuffer(buffer: Buffer): Promise<Record<string, string>[]> {
 function parseXlsxBuffer(buffer: Buffer): Record<string, string>[] {
   const workbook = read(buffer, { type: "buffer", dense: true });
   const [firstSheetName] = workbook.SheetNames;
-
-  if (!firstSheetName) {
-    return [];
-  }
+  if (!firstSheetName) return [];
 
   const sheet = workbook.Sheets[firstSheetName];
   const table = utils.sheet_to_json<(string | number | boolean | null)[]>(sheet, {
@@ -71,13 +71,11 @@ function parseXlsxBuffer(buffer: Buffer): Record<string, string>[] {
     blankrows: false,
   });
 
-  if (table.length === 0) {
-    return [];
-  }
+  if (table.length === 0) return [];
 
   const [headerRow, ...dataRows] = table;
   const headers = headerRow.map((value) =>
-    typeof value === "string" ? value.trim() : String(value ?? "").trim(),
+    typeof value === "string" ? value.trim() : String(value ?? "").trim()
   );
 
   return dataRows
@@ -85,36 +83,33 @@ function parseXlsxBuffer(buffer: Buffer): Record<string, string>[] {
       const record: Record<string, string> = {};
       let hasValue = false;
 
-      for (let index = 0; index < headers.length; index += 1) {
-        const key = headers[index];
-        if (!key) {
-          continue;
-        }
+      for (let i = 0; i < headers.length; i++) {
+        const key = headers[i];
+        if (!key) continue;
 
-        const rawValue = cells[index];
+        const rawValue = cells[i];
         const value =
           typeof rawValue === "string"
             ? rawValue.trim()
-            : rawValue === null || rawValue === undefined
+            : rawValue == null
             ? ""
             : String(rawValue).trim();
 
-        if (value.length > 0) {
-          hasValue = true;
-        }
-
+        if (value.length > 0) hasValue = true;
         record[key] = value;
       }
 
       return hasValue ? record : null;
     })
-    .filter((record): record is Record<string, string> => record !== null);
+    .filter((r): r is Record<string, string> => r !== null);
 }
 
-export async function parseImportFile(buffer: Buffer, mimetype?: string) {
+export async function parseImportFile(
+  buffer: Buffer,
+  mimetype?: string
+): Promise<Record<string, string>[]> {
   if (isLikelyXlsx(buffer, mimetype)) {
     return parseXlsxBuffer(buffer);
   }
-
   return parseCsvBuffer(buffer);
 }
