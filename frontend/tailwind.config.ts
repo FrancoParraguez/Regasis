@@ -1,5 +1,6 @@
 ﻿import type { Config } from "tailwindcss";
-export default <Partial<Config>>{
+
+export default {
   content: ["./index.html", "./src/**/*.{ts,tsx}"],
   theme: {
     extend: {
@@ -27,4 +28,4 @@ export default <Partial<Config>>{
     }
   },
   plugins: []
-};
+} satisfies Config;
