@@ -42,7 +42,9 @@ api.interceptors.response.use(
           queue.forEach((entry) => entry.resolve());
           queue = [];
         } else {
-          await new Promise<void>((resolve, reject) => queue.push({ resolve, reject }));
+          await new Promise<void>((resolve, reject) =>
+            queue.push({ resolve, reject })
+          );
         }
         const token = localStorage.getItem("token");
         if (token) {
@@ -64,4 +66,3 @@ api.interceptors.response.use(
 );
 
 export default api;
-
