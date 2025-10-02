@@ -30,7 +30,7 @@ export async function parseCsv(buffer: Buffer): Promise<Record<string, string>[]
       skip_empty_lines: true,
       trim: true,
       delimiter,
-      bom: true, // important: handles UTF-8 BOM
+      bom: true // handles UTF-8 BOM correctly
     });
 
     parser.on("readable", () => {
