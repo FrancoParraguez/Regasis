@@ -16,7 +16,7 @@ const TEMPLATE_HEADER = [
   "documento",
   "proveedor",
   "codigo_curso",
-  "rol_en_curso",
+  "rol_en_curso"
 ] as const;
 
 const TEMPLATE_SAMPLE_ROW = [
@@ -26,7 +26,7 @@ const TEMPLATE_SAMPLE_ROW = [
   "12345678",
   "Proveedor Demo",
   "CUR-001",
-  "Alumno",
+  "Alumno"
 ];
 
 const TEMPLATE_COLUMN_WIDTHS = [28, 18, 18, 14, 22, 16, 16];
@@ -54,7 +54,7 @@ function createTemplateWorkbook(): Buffer {
   <Override PartName="/xl/sharedStrings.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sharedStrings+xml"/>
   <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
   <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-</Types>`),
+</Types>`)
     },
     {
       path: "_rels/.rels",
@@ -63,7 +63,7 @@ function createTemplateWorkbook(): Buffer {
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-</Relationships>`),
+</Relationships>`)
     },
     {
       path: "docProps/core.xml",
@@ -75,7 +75,7 @@ function createTemplateWorkbook(): Buffer {
   <cp:lastModifiedBy>Regasis</cp:lastModifiedBy>
   <dcterms:created xsi:type="dcterms:W3CDTF">${createdAt}</dcterms:created>
   <dcterms:modified xsi:type="dcterms:W3CDTF">${createdAt}</dcterms:modified>
-</cp:coreProperties>`),
+</cp:coreProperties>`)
     },
     {
       path: "docProps/app.xml",
@@ -104,7 +104,7 @@ function createTemplateWorkbook(): Buffer {
   <SharedDoc>false</SharedDoc>
   <HyperlinksChanged>false</HyperlinksChanged>
   <AppVersion>16.0300</AppVersion>
-</Properties>`),
+</Properties>`)
     },
     {
       path: "xl/workbook.xml",
@@ -119,7 +119,7 @@ function createTemplateWorkbook(): Buffer {
     <sheet name="Plantilla" sheetId="1" r:id="rId1"/>
   </sheets>
   <calcPr calcId="171027"/>
-</workbook>`),
+</workbook>`)
     },
     {
       path: "xl/_rels/workbook.xml.rels",
@@ -128,7 +128,7 @@ function createTemplateWorkbook(): Buffer {
   <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
   <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
   <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/sharedStrings" Target="sharedStrings.xml"/>
-</Relationships>`),
+</Relationships>`)
     },
     {
       path: "xl/styles.xml",
@@ -143,41 +143,19 @@ function createTemplateWorkbook(): Buffer {
     </font>
   </fonts>
   <fills count="2">
-    <fill>
-      <patternFill patternType="none"/>
-    </fill>
-    <fill>
-      <patternFill patternType="gray125"/>
-    </fill>
+    <fill><patternFill patternType="none"/></fill>
+    <fill><patternFill patternType="gray125"/></fill>
   </fills>
   <borders count="1">
-    <border>
-      <left/>
-      <right/>
-      <top/>
-      <bottom/>
-      <diagonal/>
-    </border>
+    <border><left/><right/><top/><bottom/><diagonal/></border>
   </borders>
-  <cellStyleXfs count="1">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
-  </cellStyleXfs>
-  <cellXfs count="1">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-  </cellXfs>
-  <cellStyles count="1">
-    <cellStyle name="Normal" xfId="0" builtinId="0"/>
-  </cellStyles>
-</styleSheet>`),
+  <cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>
+  <cellXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/></cellXfs>
+  <cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>
+</styleSheet>`)
     },
-    {
-      path: "xl/worksheets/sheet1.xml",
-      data: toBuffer(sheetXml),
-    },
-    {
-      path: "xl/sharedStrings.xml",
-      data: toBuffer(sharedStringsXml),
-    },
+    { path: "xl/worksheets/sheet1.xml", data: toBuffer(sheetXml) },
+    { path: "xl/sharedStrings.xml", data: toBuffer(sharedStringsXml) }
   ];
 
   return createStoredZip(entries);
@@ -188,10 +166,13 @@ type SharedStringIndex = ReadonlyMap<string, number>;
 function buildSheetXml(
   rows: TemplateRows,
   widths: readonly number[],
-  sharedStringIndex: SharedStringIndex,
+  sharedStringIndex: SharedStringIndex
 ) {
   const columnsXml = widths
-    .map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`)
+    .map(
+      (width, index) =>
+        `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`
+    )
     .join("");
 
   const hasCells = rows.length > 0 && rows[0]?.length && rows[0].length > 0;
@@ -216,9 +197,7 @@ function buildSheetXml(
   return `<?xml version="1.0" encoding="UTF-8"?>
 <worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
   <dimension ref="${dimensionRef}"/>
-  <sheetViews>
-    <sheetView workbookViewId="0" tabSelected="1"/>
-  </sheetViews>
+  <sheetViews><sheetView workbookViewId="0" tabSelected="1"/></sheetViews>
   <sheetFormatPr defaultRowHeight="15"/>
   <cols>${columnsXml}</cols>
   <sheetData>${rowsXml}</sheetData>
@@ -226,10 +205,7 @@ function buildSheetXml(
 }
 
 function buildSharedStringsXml(strings: readonly string[], count: number) {
-  const itemsXml = strings
-    .map((value) => `<si><t>${escapeXml(value)}</t></si>`)
-    .join("");
-
+  const itemsXml = strings.map((value) => `<si><t>${escapeXml(value)}</t></si>`).join("");
   return `<?xml version="1.0" encoding="UTF-8"?>
 <sst xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" count="${count}" uniqueCount="${strings.length}">${itemsXml}</sst>`;
 }
@@ -248,19 +224,16 @@ function createSharedStrings(rows: TemplateRows) {
       }
     }
   }
-
   return { indexMap, values, totalCount } as const;
 }
 
 function columnName(index: number) {
   let value = index;
   let label = "";
-
   while (value >= 0) {
     label = String.fromCharCode((value % 26) + 65) + label;
     value = Math.floor(value / 26) - 1;
   }
-
   return label;
 }
 
@@ -277,38 +250,41 @@ function toBuffer(content: string) {
   return Buffer.from(content, "utf8");
 }
 
-type ZipEntry = {
-  path: string;
-  data: Buffer;
-};
+type ZipEntry = { path: string; data: Buffer };
 
 const CRC32_TABLE = (() => {
   const table = new Uint32Array(256);
-
-  for (let index = 0; index < 256; index += 1) {
-    let crc = index;
-    for (let bit = 0; bit < 8; bit += 1) {
-      if ((crc & 1) !== 0) {
-        crc = 0xedb88320 ^ (crc >>> 1);
-      } else {
-        crc >>>= 1;
-      }
+  for (let i = 0; i < 256; i++) {
+    let crc = i;
+    for (let b = 0; b < 8; b++) {
+      crc = (crc & 1) !== 0 ? 0xedb88320 ^ (crc >>> 1) : crc >>> 1;
     }
-    table[index] = crc >>> 0;
+    table[i] = crc >>> 0;
   }
-
   return table;
 })();
 
 function crc32(buffer: Buffer) {
   let crc = 0xffffffff;
-
   for (const byte of buffer) {
     const index = (crc ^ byte) & 0xff;
     crc = CRC32_TABLE[index] ^ (crc >>> 8);
   }
-
   return (crc ^ 0xffffffff) >>> 0;
+}
+
+function toDosDateTime(date: Date) {
+  let year = date.getUTCFullYear();
+  if (year < 1980) year = 1980;
+  const dosTime =
+    (date.getUTCHours() << 11) |
+    (date.getUTCMinutes() << 5) |
+    Math.floor(date.getUTCSeconds() / 2);
+  const dosDate =
+    ((year - 1980) << 9) |
+    ((date.getUTCMonth() + 1) << 5) |
+    date.getUTCDate();
+  return { time: dosTime & 0xffff, date: dosDate & 0xffff };
 }
 
 function createStoredZip(entries: ZipEntry[]) {
@@ -360,7 +336,7 @@ function createStoredZip(entries: ZipEntry[]) {
     offset += localHeader.length + fileName.length + entry.data.length;
   }
 
-  const centralDirectorySize = centralSections.reduce((total, section) => total + section.length, 0);
+  const centralDirectorySize = centralSections.reduce((total, s) => total + s.length, 0);
   const centralDirectoryOffset = offset;
 
   const endRecord = Buffer.alloc(22);
@@ -376,118 +352,45 @@ function createStoredZip(entries: ZipEntry[]) {
   return Buffer.concat([...fileSections, ...centralSections, endRecord]);
 }
 
-function toDosDateTime(date: Date) {
-  let year = date.getUTCFullYear();
-  if (year < 1980) {
-    year = 1980;
-  }
-
-  const dosTime =
-    (date.getUTCHours() << 11) |
-    (date.getUTCMinutes() << 5) |
-    Math.floor(date.getUTCSeconds() / 2);
-  const dosDate =
-    ((year - 1980) << 9) | ((date.getUTCMonth() + 1) << 5) | date.getUTCDate();
-
-  return { time: dosTime & 0xffff, date: dosDate & 0xffff };
-}
-
 const TEMPLATE_BUFFER = createTemplateWorkbook();
 
-router.post("/participantes", requireRole("ADMIN"), upload.single("file"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "Archivo requerido" });
-  }
+router.post(
+  "/participantes",
+  requireRole("ADMIN"),
+  upload.single("file"),
+  async (req, res) => {
+    if (!req.file) return res.status(400).json({ error: "Archivo requerido" });
 
-  const rows = await parseCsv(req.file.buffer);
-  let created = 0;
-  let updated = 0;
-  const errors: string[] = [];
+    const rows = await parseCsv(req.file.buffer);
+    let created = 0;
+    let updated = 0;
+    const errors: string[] = [];
 
-  const requiredFields = ["email", "nombre", "proveedor", "codigo_curso"] as const;
+    const requiredFields = ["email", "nombre", "proveedor", "codigo_curso"] as const;
 
-  for (const [idx, row] of rows.entries()) {
-    try {
-      const missingFields = requiredFields.filter((field) => {
-        const value = row[field];
-        return typeof value !== "string" || value.trim().length === 0;
-      });
+    for (const [idx, row] of rows.entries()) {
+      try {
+        const missingFields = requiredFields.filter((field) => {
+          const value = row[field];
+          return typeof value !== "string" || value.trim().length === 0;
+        });
+        if (missingFields.length > 0) {
+          throw new Error(`Faltan datos obligatorios (${missingFields.join(", ")})`);
+        }
 
-      if (missingFields.length > 0) {
-        throw new Error(`Faltan datos obligatorios (${missingFields.join(", ")})`);
-      }
+        const email = row.email.trim();
+        const providerName = row.proveedor.trim();
+        const courseCode = row.codigo_curso.trim();
 
-      const email = row.email.trim();
-      const providerName = row.proveedor.trim();
-      const courseCode = row.codigo_curso.trim();
-      const provider = await prisma.provider.upsert({
-        where: { name: providerName },
-        update: {},
-        create: { name: providerName },
-      });
+        const provider = await prisma.provider.upsert({
+          where: { name: providerName },
+          update: {},
+          create: { name: providerName }
+        });
 
-      const course = await prisma.course.findUnique({
-        where: { code: courseCode },
-      });
+        const course = await prisma.course.findUnique({ where: { code: courseCode } });
+        if (!course) throw new Error(`Curso ${courseCode} no existe`);
 
-      if (!course) {
-        throw new Error(`Curso ${courseCode} no existe`);
-      }
-
-      const firstName = row.nombre.trim();
-      const lastName = typeof row.apellido === "string" ? row.apellido.trim() : "";
-      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
-      const participant = await prisma.participant.upsert({
-        where: { email },
-        update: { name: fullName, providerId: provider.id },
-        create: { email, name: fullName, providerId: provider.id },
-      });
-
-      const before = await prisma.enrollment.findUnique({
-        where: {
-          participantId_courseId: {
-            participantId: participant.id,
-            courseId: course.id,
-          },
-        },
-      });
-
-      if (before) {
-        updated += 1;
-      }
-
-      await prisma.enrollment.upsert({
-        where: {
-          participantId_courseId: {
-            participantId: participant.id,
-            courseId: course.id,
-          },
-        },
-        update: {},
-        create: { participantId: participant.id, courseId: course.id },
-      });
-
-      if (!before) {
-        created += 1;
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Error desconocido";
-      errors.push(`Fila ${idx + 1}: ${message}`);
-    }
-  }
-
-  res.json({ created, updated, errors, total: rows.length });
-});
-
-router.get("/participantes/plantilla", requireRole("ADMIN"), (_req, res) => {
-  const buffer = TEMPLATE_BUFFER;
-  res.setHeader(
-    "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  );
-  res.setHeader("Content-Disposition", "attachment; filename=plantilla_regasis.xlsx");
-  res.setHeader("Content-Length", buffer.length.toString());
-  res.send(buffer);
-});
-
-export default router;
+        const firstName = row.nombre.trim();
+        const lastName = typeof row.apellido === "string" ? row.apellido.trim() : "";
+        const fullName = lastName ? `${first
