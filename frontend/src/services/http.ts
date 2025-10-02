@@ -1,4 +1,8 @@
-import axios, { AxiosHeaders, type AxiosError, type InternalAxiosRequestConfig } from "axios";
+import axios, {
+  AxiosHeaders,
+  type AxiosError,
+  type InternalAxiosRequestConfig
+} from "axios";
 import { refresh } from "./auth";
 
 const baseURL = (import.meta.env.VITE_API_BASE_URL ?? "").trim() || "/api";
@@ -6,7 +10,7 @@ const baseURL = (import.meta.env.VITE_API_BASE_URL ?? "").trim() || "/api";
 const api = axios.create({
   baseURL,
   withCredentials: false,
-  timeout: 15000,
+  timeout: 15000
 });
 
 api.interceptors.request.use((config) => {
@@ -40,11 +44,16 @@ api.interceptors.response.use(
           queue.forEach((entry) => entry.resolve());
           queue = [];
         } else {
-          await new Promise<void>((resolve, reject) => queue.push({ resolve, reject }));
+          await new Promise<void>((resolve, reject) =>
+            queue.push({ resolve, reject })
+          );
         }
         const token = localStorage.getItem("token");
         if (token && original.headers) {
-          (original.headers as AxiosHeaders).set("Authorization", `Bearer ${token}`);
+          (original.headers as AxiosHeaders).set(
+            "Authorization",
+            `Bearer ${token}`
+          );
         }
         return api(original);
       } catch (refreshError) {

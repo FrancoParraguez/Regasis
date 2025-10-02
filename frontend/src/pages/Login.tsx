@@ -25,7 +25,9 @@ export default function Login() {
       if (axios.isAxiosError(unknownError)) {
         const data = unknownError.response?.data;
         if (data && typeof data === "object" && "error" in data) {
-          setError(String((data as { error?: unknown }).error ?? "Error desconocido"));
+          setError(
+            String((data as { error?: unknown }).error ?? "Error desconocido")
+          );
         } else {
           setError(unknownError.message);
         }
@@ -46,7 +48,12 @@ export default function Login() {
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
             <Label htmlFor="email">Correo</Label>
-            <Input id="email" value={email} autoComplete="email" onChange={(event) => setEmail(event.target.value)} />
+            <Input
+              id="email"
+              value={email}
+              autoComplete="email"
+              onChange={(event) => setEmail(event.target.value)}
+            />
           </div>
           <div>
             <Label htmlFor="password">Contraseña</Label>

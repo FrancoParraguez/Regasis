@@ -42,7 +42,10 @@ export async function refresh() {
   const refreshToken = getRefresh();
   if (!refreshToken) throw new Error("No refresh token");
   const { data } = await api.post("/auth/refresh", { refreshToken });
-  const { token, refreshToken: nextRefresh } = data as { token: string; refreshToken: string };
+  const { token, refreshToken: nextRefresh } = data as {
+    token: string;
+    refreshToken: string;
+  };
   localStorage.setItem("token", token);
   setRefresh(nextRefresh);
   return token;
