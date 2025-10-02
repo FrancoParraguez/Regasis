@@ -11,7 +11,8 @@ import {
   type GradeType,
   type GradeUpdateMode
 } from "../services/notas";
-import { listarMisCursos } from "../services/cursos";
+import { listarCursos, listarMisCursos } from "../services/cursos";
+import { useAuth } from "../hooks/AuthProvider";
 
 type CursoOption = { id: string; code: string; name: string };
 
@@ -31,6 +32,7 @@ type EnrollmentRow = {
 const GRADE_TYPES: GradeType[] = ["P1", "P2", "EXAMEN", "PRACTICA", "OTRO"];
 
 export default function InstructorNotas() {
+  const { user } = useAuth();
   const [cursoId, setCursoId] = useState<string>("");
   const [cursos, setCursos] = useState<CursoOption[]>([]);
   const [rows, setRows] = useState<EnrollmentRow[]>([]);
@@ -56,7 +58,8 @@ export default function InstructorNotas() {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const cs = await listarMisCursos();
+      const fetchCursos = user?.role === "ADMIN" ? listarCursos : listarMisCursos;
+      const cs = await fetchCursos();
       if (cancelled) return;
       const mapped = cs.map<CursoOption>((curso) => ({
         id: curso.id,
@@ -64,12 +67,18 @@ export default function InstructorNotas() {
         name: curso.name
       }));
       setCursos(mapped);
-      if (mapped[0]) setCursoId(mapped[0].id);
+      if (mapped[0]) {
+        setCursoId((prev) =>
+          prev && mapped.some((curso) => curso.id === prev) ? prev : mapped[0].id
+        );
+      } else {
+        setCursoId("");
+      }
     })();
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [user?.role]);
 
   useEffect(() => {
     if (!cursoId) return;
@@ -645,8 +654,8 @@ export default function InstructorNotas() {
           {importSummary && (
             <div className="space-y-1 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
               <div>
-                <strong>Resultados:</strong> {importSummary.total} procesados • {" "}
-                {importSummary.created} creados • {importSummary.updated} actualizados • {" "}
+                <strong>Resultados:</strong> {importSummary.total} procesados •{" "}
+                {importSummary.created} creados • {importSummary.updated} actualizados •{" "}
                 {importSummary.skipped} omitidos
               </div>
               {importSummary.errors.length > 0 && (
@@ -668,7 +677,9 @@ export default function InstructorNotas() {
             Utiliza punto o coma como separador decimal.
           </p>
           <p>
-            Puedes guardar rápidamente con <kbd className="rounded border border-gray-300 px-1">Enter</kbd> cuando termines de escribir una nota.
+            Puedes guardar rápidamente con{" "}
+            <kbd className="rounded border border-gray-300 px-1">Enter</kbd>{" "}
+            cuando termines de escribir una nota.
           </p>
         </Card>
       </div>
