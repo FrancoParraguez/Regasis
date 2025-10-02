@@ -11,19 +11,30 @@ interface Env {
   JWT_EXPIRES: DurationValue;
   REFRESH_EXPIRES: DurationValue;
   CORS_ORIGIN: string;
-  DATABASE_URL: string | null;
+  DATABASE_URL: string;
 }
 
 const defaultJwtExpires: DurationValue = "8h";
 const defaultRefreshExpires: DurationValue = "7d";
 
-function resolveDuration(value: string | undefined, fallback: DurationValue): DurationValue {
-  if(value === undefined || value.trim() === ""){
+function requireEnv(key: keyof NodeJS.ProcessEnv): string {
+  const value = process.env[key];
+  if (!value) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return value;
+}
+
+function resolveDuration(
+  value: string | undefined,
+  fallback: DurationValue
+): DurationValue {
+  if (value === undefined || value.trim() === "") {
     return fallback;
   }
 
   const numeric = Number(value);
-  if(Number.isFinite(numeric)){
+  if (Number.isFinite(numeric)) {
     return numeric;
   }
 
@@ -35,7 +46,10 @@ export const env: Env = {
   NODE_ENV: process.env.NODE_ENV || "development",
   JWT_SECRET: process.env.JWT_SECRET || "changeme",
   JWT_EXPIRES: resolveDuration(process.env.JWT_EXPIRES, defaultJwtExpires),
-  REFRESH_EXPIRES: resolveDuration(process.env.REFRESH_EXPIRES, defaultRefreshExpires),
+  REFRESH_EXPIRES: resolveDuration(
+    process.env.REFRESH_EXPIRES,
+    defaultRefreshExpires
+  ),
   CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:5173",
-  DATABASE_URL: process.env.DATABASE_URL?.trim() || null
+  DATABASE_URL: requireEnv("DATABASE_URL")
 };

@@ -1,7 +1,7 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
 import { requireRole } from "../middleware/auth.js";
-import * as demoData from "../services/demo-data.js";
+import { listDemoSessions, createDemoSession } from "../services/demo-data.js";
 import { isPrismaUnavailable } from "../utils/prisma.js";
 
 const prisma = new PrismaClient();
@@ -21,7 +21,7 @@ router.get(
       return res.json(sessions);
     } catch (error) {
       if (!isPrismaUnavailable(error)) return next(error);
-      return res.json(demoData.listDemoSessions(userId));
+      return res.json(listDemoSessions(userId));
     }
   }
 );
@@ -46,7 +46,7 @@ router.post(
       if (!isPrismaUnavailable(error)) return next(error);
 
       try {
-        const session = demoData.createDemoSession({ courseId, date });
+        const session = createDemoSession({ courseId, date });
         return res.status(201).json(session);
       } catch (creationError) {
         if (creationError instanceof Error && creationError.message === "Curso no encontrado") {

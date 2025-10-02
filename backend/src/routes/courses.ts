@@ -1,7 +1,12 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
 import { requireRole } from "../middleware/auth.js";
-import * as demoData from "../services/demo-data.js";
+import {
+  listDemoCourses,
+  listAllDemoCourses,
+  createDemoCourse,
+  deleteDemoCourse
+} from "../services/demo-data.js";
 import { isPrismaUnavailable } from "../utils/prisma.js";
 
 const prisma = new PrismaClient();
@@ -15,7 +20,7 @@ router.get("/", requireRole("ADMIN"), async (_req: Request, res: Response, next:
     return res.json(courses);
   } catch (error) {
     if (!isPrismaUnavailable(error)) return next(error);
-    return res.json(demoData.listAllDemoCourses());
+    return res.json(listAllDemoCourses());
   }
 });
 
@@ -52,7 +57,7 @@ router.post(
       if (!isPrismaUnavailable(error)) return next(error);
 
       try {
-        const course = demoData.createDemoCourse({
+        const course = createDemoCourse({
           code,
           name,
           startDate,
@@ -91,7 +96,7 @@ router.delete(
     } catch (error) {
       if (!isPrismaUnavailable(error)) return next(error);
 
-      if (demoData.deleteDemoCourse(id)) {
+      if (deleteDemoCourse(id)) {
         return res.status(204).send();
       }
 
@@ -125,7 +130,7 @@ router.get(
       return res.json(courses);
     } catch (error) {
       if (!isPrismaUnavailable(error)) return next(error);
-      return res.json(demoData.listDemoCourses(userId, user.role));
+      return res.json(listDemoCourses(userId, user.role));
     }
   }
 );
