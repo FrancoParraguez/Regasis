@@ -44,6 +44,15 @@ export default function Login() {
   return (
     <div className="mx-auto mt-24 max-w-sm">
       <Card className="p-5">
+        {/* Espacio para el logo */}
+        <div className="flex justify-center mb-4">
+          <img
+            src="/logo.png" // coloca aquí la ruta de tu logo
+            alt="Logo"
+            className="h-16 w-auto"
+          />
+        </div>
+
         <h1 className="mb-3 text-lg font-semibold">Ingresar</h1>
         <form onSubmit={onSubmit} className="space-y-3">
           <div>
