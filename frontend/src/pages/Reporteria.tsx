@@ -1,29 +1,34 @@
-import React, { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button, Card, Input, Table } from "../components/ui";
-import { reporteAsistencia, reporteCalificaciones, type AttendanceReportDTO, type GradeReportDTO } from "../services/reportes";
+import {
+  reporteAsistencia,
+  reporteCalificaciones,
+  type AttendanceReportDTO,
+  type GradeReportDTO
+} from "../services/reportes";
 import { exportToXlsx } from "../utils/xlsx";
 
 type ReportType = "asistencia" | "calificaciones" | "mixto";
 
 type ReportRow = Record<string, string | number | undefined>;
 
-function mapAttendanceRow(d: AttendanceReportDTO): ReportRow {
+function mapAttendanceRow(data: AttendanceReportDTO): ReportRow {
   return {
-    Curso: d.session?.course?.code ?? "",
-    Fecha: d.session?.date?.slice(0, 10) ?? "",
-    Participante: d.enrollment?.participant?.name ?? "",
-    Estado: d.state ?? "",
-    Observación: d.observation ?? "",
+    Curso: data.session?.course?.code ?? "",
+    Fecha: data.session?.date?.slice(0, 10) ?? "",
+    Participante: data.enrollment?.participant?.name ?? "",
+    Estado: data.state ?? "",
+    Observación: data.observation ?? ""
   };
 }
 
-function mapGradeRow(d: GradeReportDTO): ReportRow {
+function mapGradeRow(data: GradeReportDTO): ReportRow {
   return {
-    Curso: d.enrollment?.course?.code ?? "",
-    Participante: d.enrollment?.participant?.name ?? "",
-    Tipo: d.type ?? "",
-    Nota: d.score ?? "",
-    Fecha: d.date?.slice(0, 10) ?? "",
+    Curso: data.enrollment?.course?.code ?? "",
+    Participante: data.enrollment?.participant?.name ?? "",
+    Tipo: data.type ?? "",
+    Nota: data.score ?? "",
+    Fecha: data.date?.slice(0, 10) ?? ""
   };
 }
 
@@ -33,6 +38,27 @@ export default function Reporteria() {
   const [hasta, setHasta] = useState<string>("");
   const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
+
+  const columns = useMemo(
+    () =>
+      rows.length
+        ? Object.keys(rows[0])
+        : ["Curso", "Fecha", "Participante", "Estado/%"],
+    [rows]
+  );
+
+  const tableRows = useMemo(
+    () =>
+      rows.length
+        ? rows.map((row) =>
+            columns.map((column) => String(row[column] ?? ""))
+          )
+        : [
+            ["CUR-001", "2025-10-03", "Ana Soto", "P (100%)"],
+            ["CUR-001", "2025-10-10", "Leandro Ruiz", "A (0%)"]
+          ],
+    [columns, rows]
+  );
 
   async function consultar() {
     setLoading(true);
@@ -48,8 +74,14 @@ export default function Reporteria() {
         const attendance = await reporteAsistencia(commonParams);
         const grades = await reporteCalificaciones(commonParams);
         setRows([
-          ...attendance.map((d) => ({ Tipo: "Asistencia", ...mapAttendanceRow(d) })),
-          ...grades.map((d) => ({ Tipo: "Calificación", ...mapGradeRow(d) })),
+          ...attendance.map((dato) => ({
+            Tipo: "Asistencia",
+            ...mapAttendanceRow(dato)
+          })),
+          ...grades.map((dato) => ({
+            Tipo: "Calificación",
+            ...mapGradeRow(dato)
+          }))
         ]);
       }
     } finally {
@@ -58,18 +90,20 @@ export default function Reporteria() {
   }
 
   function exportar() {
-    exportToXlsx(`reporte-${tipo}-${new Date().toISOString().slice(0, 10)}.xlsx`, rows);
+    exportToXlsx(
+      `reporte-${tipo}-${new Date().toISOString().slice(0, 10)}.xlsx`,
+      rows
+    );
   }
-
-  const columns = rows.length ? Object.keys(rows[0]) : ["Curso", "Fecha", "Participante", "Estado/%"];
-  const tableRows = rows.length ? rows.map((r) => columns.map((c) => String(r[c] ?? ""))) : [["CUR-001", "2025-10-03", "Ana Soto", "P (100%)"], ["CUR-001", "2025-10-10", "Leandro Ruiz", "A (0%)"]];
 
   return (
     <section className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Reportes</h1>
         <div className="flex items-center gap-2">
-          <Button onClick={consultar}>{loading ? "Cargando…" : "Consultar"}</Button>
+          <Button onClick={consultar}>
+            {loading ? "Cargando…" : "Consultar"}
+          </Button>
           <Button onClick={exportar} disabled={!rows.length}>
             Generar Excel
           </Button>
@@ -80,20 +114,49 @@ export default function Reporteria() {
           <Card className="p-4">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <div>
-                <label className="label">Proveedor</label>
-                <Input placeholder="(se usa provider del usuario si es REPORTER)" readOnly />
+                <label className="label" htmlFor="report-provider">
+                  Proveedor
+                </label>
+                <Input
+                  id="report-provider"
+                  placeholder="(se usa provider del usuario si es REPORTER)"
+                  readOnly
+                />
               </div>
               <div>
-                <label className="label">Desde</label>
-                <Input type="date" value={desde} onChange={(e) => setDesde(e.target.value)} />
+                <label className="label" htmlFor="report-from">
+                  Desde
+                </label>
+                <Input
+                  id="report-from"
+                  type="date"
+                  value={desde}
+                  onChange={(event) => setDesde(event.target.value)}
+                />
               </div>
               <div>
-                <label className="label">Hasta</label>
-                <Input type="date" value={hasta} onChange={(e) => setHasta(e.target.value)} />
+                <label className="label" htmlFor="report-to">
+                  Hasta
+                </label>
+                <Input
+                  id="report-to"
+                  type="date"
+                  value={hasta}
+                  onChange={(event) => setHasta(event.target.value)}
+                />
               </div>
               <div>
-                <label className="label">Tipo</label>
-                <select className="input" value={tipo} onChange={(e) => setTipo(e.target.value as ReportType)}>
+                <label className="label" htmlFor="report-type">
+                  Tipo
+                </label>
+                <select
+                  id="report-type"
+                  className="input"
+                  value={tipo}
+                  onChange={(event) =>
+                    setTipo(event.target.value as ReportType)
+                  }
+                >
                   <option value="asistencia">Asistencia</option>
                   <option value="calificaciones">Calificaciones</option>
                   <option value="mixto">Mixto</option>
@@ -110,7 +173,8 @@ export default function Reporteria() {
           <Card className="p-4">
             <div className="text-sm font-semibold">Alcance</div>
             <p className="mt-1 text-sm text-gray-600">
-              Los usuarios con rol REPORTER sólo consultan su proveedor asignado (en backend).
+              Los usuarios con rol REPORTER sólo consultan su proveedor asignado
+              (en backend).
             </p>
           </Card>
         </div>

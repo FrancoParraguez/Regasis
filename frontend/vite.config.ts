@@ -1,5 +1,6 @@
-﻿import { defineConfig } from "vite";
+import { defineConfig } from "vitest/config";
 import react from "@vitejs/plugin-react";
+
 export default defineConfig({
   plugins: [react()],
   server: {
@@ -8,14 +9,13 @@ export default defineConfig({
       "/api": {
         target: "http://localhost:4000",
         changeOrigin: true,
-        // Ensure the backend receives the original path.
-        rewrite: (path) => path
-      }
-    }
+        rewrite: (path) => path,
+      },
+    },
   },
   test: {
     environment: "jsdom",
     setupFiles: ["./src/setupTests.ts"],
-    css: true
-  }
+    css: true,
+  },
 });

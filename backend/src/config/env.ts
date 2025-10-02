@@ -25,7 +25,10 @@ function requireEnv(key: keyof NodeJS.ProcessEnv): string {
   return value;
 }
 
-function resolveDuration(value: string | undefined, fallback: DurationValue): DurationValue {
+function resolveDuration(
+  value: string | undefined,
+  fallback: DurationValue
+): DurationValue {
   if (value === undefined || value.trim() === "") {
     return fallback;
   }
@@ -43,7 +46,10 @@ export const env: Env = {
   NODE_ENV: process.env.NODE_ENV || "development",
   JWT_SECRET: process.env.JWT_SECRET || "changeme",
   JWT_EXPIRES: resolveDuration(process.env.JWT_EXPIRES, defaultJwtExpires),
-  REFRESH_EXPIRES: resolveDuration(process.env.REFRESH_EXPIRES, defaultRefreshExpires),
+  REFRESH_EXPIRES: resolveDuration(
+    process.env.REFRESH_EXPIRES,
+    defaultRefreshExpires
+  ),
   CORS_ORIGIN: process.env.CORS_ORIGIN || "http://localhost:5173",
   DATABASE_URL: requireEnv("DATABASE_URL")
 };

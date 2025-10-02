@@ -1,23 +1,29 @@
-﻿import React from "react";
-import { Button, Card } from "../components/ui";
-import { Upload, FileDown } from "lucide-react";
+import { FileDown, Upload } from "lucide-react";
 
-export default function AdminImportaciones(){
+import { Button, Card } from "../components/ui";
+
+export default function AdminImportaciones() {
   return (
     <section className="space-y-4">
       <header className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Importaciones</h1>
         <div className="flex items-center gap-2">
-          <Button><Upload size={16}/> Importar CSV participantes</Button>
-          <Button variant="accent"><FileDown size={16}/> Plantilla CSV</Button>
+          <Button>
+            <Upload size={16} /> Importar CSV participantes
+          </Button>
+          <Button variant="accent">
+            <FileDown size={16} /> Plantilla CSV
+          </Button>
         </div>
       </header>
       <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-12 lg:col-span-8 space-y-4">
+        <div className="col-span-12 space-y-4 lg:col-span-8">
           <Card className="p-4">
             <p className="label">Subir archivo</p>
             <input type="file" className="input" accept=".csv" />
-            <p className="mt-2 text-xs text-gray-500">Formato: <code className="font-mono">email,nombre,apellido,documento,proveedor,codigo_curso,rol_en_curso</code></p>
+            <p className="mt-2 text-xs text-gray-500">
+              Formato: <code className="font-mono">email,nombre,apellido,documento,proveedor,codigo_curso,rol_en_curso</code>
+            </p>
           </Card>
           <Card className="p-4">
             <p className="text-sm font-semibold">Resumen de resultados</p>
@@ -29,10 +35,10 @@ export default function AdminImportaciones(){
             </ul>
           </Card>
         </div>
-        <div className="col-span-12 lg:col-span-4 space-y-4">
+        <div className="col-span-12 space-y-4 lg:col-span-4">
           <Card className="p-4">
             <div className="text-sm font-semibold">Seguridad</div>
-            <p className="mt-1 text-sm text-gray-600">JWT/OAuth2, HTTPS, contraseÃ±as robustas.</p>
+            <p className="mt-1 text-sm text-gray-600">JWT/OAuth2, HTTPS, contraseñas robustas.</p>
           </Card>
         </div>
       </div>

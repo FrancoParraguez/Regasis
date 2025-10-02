@@ -1,7 +1,13 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+
 import { Button, Input, Table } from "../components/ui";
+import {
+  obtenerAsistencia,
+  guardarAsistencia,
+  type AttendanceItemDTO,
+  type AttendanceState
+} from "../services/asistencias";
 import { listarSesionesMias } from "../services/sesiones";
-import { obtenerAsistencia, guardarAsistencia, type AttendanceItemDTO, type AttendanceState } from "../services/asistencias";
 
 type SessionOption = { id: string; label: string };
 
@@ -14,61 +20,88 @@ export default function InstructorAsistencia() {
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const s = await listarSesionesMias();
-      const mapped = s.map<SessionOption>((x) => ({ id: x.id, label: `${x.course?.code || ""} • ${x.date.slice(0, 10)}` }));
+      const sessions = await listarSesionesMias();
+      if (cancelled) return;
+      const mapped = sessions.map<SessionOption>((session) => ({
+        id: session.id,
+        label: `${session.course?.code ?? ""} • ${session.date.slice(0, 10)}`
+      }));
       setSesiones(mapped);
       if (mapped[0]) setSessionId(mapped[0].id);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
     (async () => {
-      if (!sessionId) return;
       setLoading(true);
       try {
-        const a = await obtenerAsistencia(sessionId);
-        setData(a);
+        const attendance = await obtenerAsistencia(sessionId);
+        if (!cancelled) setData(attendance);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [sessionId]);
 
   function toggle(enrollmentId: string) {
-    setData((prev) =>
-      prev.map((x) =>
-        x.enrollment.id === enrollmentId ? { ...x, state: x.state === "PRESENTE" ? "AUSENTE" : "PRESENTE" } : x
+    setData((previous) =>
+      previous.map((item) =>
+        item.enrollment.id === enrollmentId
+          ? {
+              ...item,
+              state: item.state === "PRESENTE" ? "AUSENTE" : "PRESENTE"
+            }
+          : item
       )
     );
   }
 
   async function save() {
-    const items = data.map((x) => ({
-      enrollmentId: x.enrollment.id,
-      state: x.state as AttendanceState,
-      observation: x.observation || undefined,
+    const items = data.map((item) => ({
+      enrollmentId: item.enrollment.id,
+      state: item.state as AttendanceState,
+      observation: item.observation ?? undefined
     }));
     await guardarAsistencia(sessionId, items);
   }
 
   const columns = ["Participante", "Curso", "Estado", "Obs."];
-  const rows = data.map((x) => [
-    <div key={x.id} className="flex items-center gap-2">
+  const rows = data.map((item) => [
+    <div key={item.id} className="flex items-center gap-2">
       <span className="dot" />
-      <span className="font-medium">{x.enrollment.participant.name}</span>
+      <span className="font-medium">{item.enrollment.participant.name}</span>
     </div>,
-    x.enrollment.course.code,
-    <Button key={`${x.enrollment.id}-btn`} onClick={() => toggle(x.enrollment.id)} variant={x.state === "PRESENTE" ? "accent" : "ghost"}>
-      {x.state}
+    item.enrollment.course.code,
+    <Button
+      key={`${item.enrollment.id}-btn`}
+      onClick={() => toggle(item.enrollment.id)}
+      variant={item.state === "PRESENTE" ? "accent" : "ghost"}
+    >
+      {item.state}
     </Button>,
     <Input
-      key={`${x.enrollment.id}-obs`}
-      defaultValue={x.observation || ""}
-      onChange={(e) =>
-        setData((prev) => prev.map((y) => (y.enrollment.id === x.enrollment.id ? { ...y, observation: e.target.value } : y)))
+      key={`${item.enrollment.id}-obs`}
+      value={item.observation ?? ""}
+      onChange={(event) =>
+        setData((previous) =>
+          previous.map((entry) =>
+            entry.enrollment.id === item.enrollment.id
+              ? { ...entry, observation: event.target.value }
+              : entry
+          )
+        )
       }
-    />,
+    />
   ]);
 
   return (
@@ -76,10 +109,14 @@ export default function InstructorAsistencia() {
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Asistencia</h1>
         <div className="flex items-center gap-2">
-          <select className="input" value={sessionId} onChange={(e) => setSessionId(e.target.value)}>
-            {sesiones.map((s) => (
-              <option key={s.id} value={s.id}>
-                {s.label}
+          <select
+            className="input"
+            value={sessionId}
+            onChange={(event) => setSessionId(event.target.value)}
+          >
+            {sesiones.map((session) => (
+              <option key={session.id} value={session.id}>
+                {session.label}
               </option>
             ))}
           </select>

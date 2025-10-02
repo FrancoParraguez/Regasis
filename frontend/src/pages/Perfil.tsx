@@ -1,8 +1,7 @@
-﻿import React from "react";
 import { Card, Input, Label } from "../components/ui";
 import { useAuth } from "../hooks/AuthProvider";
 
-export default function Perfil(){
+export default function Perfil() {
   const { user } = useAuth();
   return (
     <section className="space-y-4">
@@ -10,20 +9,20 @@ export default function Perfil(){
       <Card className="p-4">
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
           <div>
-            <Label>Nombre</Label>
-            <Input defaultValue={user?.name || "Usuario"}/>
+            <Label htmlFor="profile-name">Nombre</Label>
+            <Input id="profile-name" defaultValue={user?.name || "Usuario"} />
           </div>
           <div>
-            <Label>Correo</Label>
-            <Input defaultValue={user?.email || ""}/>
+            <Label htmlFor="profile-email">Correo</Label>
+            <Input id="profile-email" defaultValue={user?.email || ""} />
           </div>
           <div>
-            <Label>Rol</Label>
-            <Input defaultValue={user?.role || ""} readOnly/>
+            <Label htmlFor="profile-role">Rol</Label>
+            <Input id="profile-role" defaultValue={user?.role || ""} readOnly />
           </div>
           <div>
-            <Label>Proveedor</Label>
-            <Input defaultValue={user?.providerId || ""} readOnly/>
+            <Label htmlFor="profile-provider">Proveedor</Label>
+            <Input id="profile-provider" defaultValue={user?.providerId || ""} readOnly />
           </div>
         </div>
       </Card>
