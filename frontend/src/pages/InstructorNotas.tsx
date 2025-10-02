@@ -14,7 +14,14 @@ import {
 import { listarCursos, listarMisCursos } from "../services/cursos";
 import { useAuth } from "../hooks/AuthProvider";
 
-type CursoOption = { id: string; code: string; name: string };
+type CursoOption = {
+  id: string;
+  code: string;
+  name: string;
+  senceCode?: string | null;
+  startDate: string;
+  endDate: string;
+};
 
 type GradeCell = {
   id?: string;
@@ -55,6 +62,16 @@ export default function InstructorNotas() {
     "missing"
   );
 
+  const evaluacionesDisponibles = useMemo(
+    () => GRADE_TYPES.filter((tipo) => !evaluaciones.includes(tipo)),
+    [evaluaciones]
+  );
+
+  const evaluacionSeleccionadaTieneNotas = useMemo(() => {
+    if (!evaluacionSeleccionada) return false;
+    return rows.some((row) => Boolean(row.grades[evaluacionSeleccionada]?.score));
+  }, [rows, evaluacionSeleccionada]);
+
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -64,7 +81,10 @@ export default function InstructorNotas() {
       const mapped = cs.map<CursoOption>((curso) => ({
         id: curso.id,
         code: curso.code,
-        name: curso.name
+        name: curso.name,
+        senceCode: curso.senceCode ?? null,
+        startDate: curso.startDate ?? "",
+        endDate: curso.endDate ?? ""
       }));
       setCursos(mapped);
       if (mapped[0]) {
@@ -106,16 +126,6 @@ export default function InstructorNotas() {
   useEffect(() => {
     setModoImportacion("missing");
   }, [evaluacionSeleccionada]);
-
-  const evaluacionesDisponibles = useMemo(
-    () => GRADE_TYPES.filter((tipo) => !evaluaciones.includes(tipo)),
-    [evaluaciones]
-  );
-
-  const evaluacionSeleccionadaTieneNotas = useMemo(() => {
-    if (!evaluacionSeleccionada) return false;
-    return rows.some((row) => Boolean(row.grades[evaluacionSeleccionada]?.score));
-  }, [rows, evaluacionSeleccionada]);
 
   useEffect(() => {
     if (
@@ -242,15 +252,11 @@ export default function InstructorNotas() {
     setImportSummary(null);
     setImportProgress(0);
     try {
-      const summary = await cargarNotasDesdeArchivo(
-        cursoId,
-        archivo,
-        {
-          evaluation: evaluacionSeleccionada,
-          mode: modoImportacion,
-          onProgress: setImportProgress
-        }
-      );
+      const summary = await cargarNotasDesdeArchivo(cursoId, archivo, {
+        evaluation: evaluacionSeleccionada,
+        mode: modoImportacion,
+        onProgress: setImportProgress
+      });
       setImportSummary(summary);
       await recargarNotas();
       formElement.reset();
@@ -362,9 +368,7 @@ export default function InstructorNotas() {
       await recargarNotas();
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "No se pudo guardar la nota";
+        error instanceof Error ? error.message : "No se pudo guardar la nota";
       setCellErrors((prev) => ({ ...prev, [clave]: message }));
     } finally {
       setSavingCell(null);
@@ -577,7 +581,9 @@ export default function InstructorNotas() {
       </Card>
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="space-y-4 p-4">
-          <h2 className="text-base font-semibold text-gray-700">Importar desde Excel</h2>
+          <h2 className="text-base font-semibold text-gray-700">
+            Importar desde Excel
+          </h2>
           <form className="space-y-3" onSubmit={importarNotas}>
             <div className="space-y-1">
               <Label htmlFor="evaluacionExcel">Evaluación a completar</Label>
@@ -609,9 +615,7 @@ export default function InstructorNotas() {
                   setArchivo(event.target.files ? event.target.files[0] ?? null : null)
                 }
               />
-              {archivo && (
-                <p className="text-xs text-gray-500">{archivo.name}</p>
-              )}
+              {archivo && <p className="text-xs text-gray-500">{archivo.name}</p>}
             </div>
             {evaluacionSeleccionada && evaluacionSeleccionadaTieneNotas && (
               <fieldset className="space-y-2 rounded-md border border-gray-200 p-3 text-sm">
@@ -655,8 +659,8 @@ export default function InstructorNotas() {
             <div className="space-y-1 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
               <div>
                 <strong>Resultados:</strong> {importSummary.total} procesados •{" "}
-                {importSummary.created} creados • {importSummary.updated} actualizados •{" "}
-                {importSummary.skipped} omitidos
+                {importSummary.created} creados • {importSummary.updated}{" "}
+                actualizados • {importSummary.skipped} omitidos
               </div>
               {importSummary.errors.length > 0 && (
                 <ul className="list-disc space-y-1 pl-5 text-xs text-red-600">
@@ -673,8 +677,8 @@ export default function InstructorNotas() {
             Recomendaciones de carga
           </h2>
           <p>
-            Las notas aceptan valores decimales entre <strong>1.0</strong> y <strong>7.0</strong>.
-            Utiliza punto o coma como separador decimal.
+            Las notas aceptan valores decimales entre <strong>1.0</strong> y{" "}
+            <strong>7.0</strong>. Utiliza punto o coma como separador decimal.
           </p>
           <p>
             Puedes guardar rápidamente con{" "}

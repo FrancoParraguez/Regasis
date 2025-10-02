@@ -1,6 +1,6 @@
 import api from "./http";
 
-export type GradeType = "P1" | "P2" | "EXAMEN" | "PRACTICA" | "OTRO";
+export type GradeType = string;
 
 export type GradeDTO = {
   id: string;

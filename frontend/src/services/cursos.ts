@@ -7,6 +7,7 @@ export type CursoDTO = {
   startDate: string;
   endDate: string;
   providerId: string;
+  senceCode?: string | null;
 };
 
 export async function listarCursos() {
