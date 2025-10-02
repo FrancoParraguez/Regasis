@@ -5,7 +5,7 @@ import { Button, Card } from "../components/ui";
 import {
   descargarPlantillaParticipantes,
   importarParticipantes,
-  type ImportSummary,
+  type ImportSummary
 } from "../services/importaciones";
 
 type ImportStatus = "idle" | "uploading" | "downloading";
@@ -40,9 +40,9 @@ export default function AdminImportaciones() {
       const result = await importarParticipantes(selectedFile);
       setSummary(result);
       setLastRun(new Date());
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+
+      // reset input
+      if (fileInputRef.current) fileInputRef.current.value = "";
       setSelectedFile(null);
     } catch (error) {
       const message =
@@ -87,9 +87,9 @@ export default function AdminImportaciones() {
       { label: "Registros procesados", value: summary?.total ?? 0 },
       { label: "Creados", value: summary?.created ?? 0 },
       { label: "Actualizados", value: summary?.updated ?? 0 },
-      { label: "Errores", value: summary?.errors.length ?? 0 },
+      { label: "Errores", value: summary?.errors.length ?? 0 }
     ],
-    [summary],
+    [summary]
   );
 
   return (
@@ -129,11 +129,11 @@ export default function AdminImportaciones() {
                 onChange={selectFile}
               />
               <p className="mt-2 text-xs text-gray-500">
-                Formatos aceptados:
+                Formatos aceptados:{" "}
                 <code className="ml-1 font-mono">
                   email,nombre,apellido,documento,proveedor,codigo_curso,rol_en_curso
                 </code>
-                <span className="ml-1">en CSV (UTF-8) o Excel (.xlsx).</span>
+                <span className="ml-1"> en CSV (UTF-8) o Excel (.xlsx).</span>
               </p>
               {selectedFile ? (
                 <p className="mt-2 text-xs text-gray-600">Archivo seleccionado: {selectedFile.name}</p>
@@ -190,7 +190,7 @@ export default function AdminImportaciones() {
           <Card className="p-4">
             <div className="text-sm font-semibold">Buenas prácticas</div>
             <ul className="mt-2 space-y-1 text-sm text-gray-600">
-              <li>Valida duplicados en el CSV antes de subirlo.</li>
+              <li>Valida duplicados en el CSV/Excel antes de subirlo.</li>
               <li>Utiliza la plantilla oficial para mantener los encabezados.</li>
               <li>Verifica los códigos de curso activos.</li>
             </ul>
