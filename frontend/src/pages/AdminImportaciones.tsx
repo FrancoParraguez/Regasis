@@ -1,23 +1,11 @@
-import {
-  useCallback,
-  useMemo,
-  useRef,
-  useState,
-  type ChangeEvent
-} from "react";
-import {
-  AlertCircle,
-  CheckCircle2,
-  FileDown,
-  Loader2,
-  Upload
-} from "lucide-react";
+import { useCallback, useMemo, useRef, useState, type ChangeEvent } from "react";
+import { AlertCircle, CheckCircle2, FileDown, Loader2, Upload } from "lucide-react";
 
 import { Button, Card } from "../components/ui";
 import {
   descargarPlantillaParticipantes,
   importarParticipantes,
-  type ImportSummary
+  type ImportSummary,
 } from "../services/importaciones";
 
 type ImportStatus = "idle" | "uploading" | "downloading";
@@ -99,9 +87,9 @@ export default function AdminImportaciones() {
       { label: "Registros procesados", value: summary?.total ?? 0 },
       { label: "Creados", value: summary?.created ?? 0 },
       { label: "Actualizados", value: summary?.updated ?? 0 },
-      { label: "Errores", value: summary?.errors.length ?? 0 }
+      { label: "Errores", value: summary?.errors.length ?? 0 },
     ],
-    [summary]
+    [summary],
   );
 
   return (
@@ -109,16 +97,8 @@ export default function AdminImportaciones() {
       <header className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-xl font-semibold">Importaciones</h1>
         <div className="flex flex-wrap items-center gap-2">
-          <Button
-            type="button"
-            onClick={handleUpload}
-            disabled={importing || downloading}
-          >
-            {importing ? (
-              <Loader2 className="mr-2 animate-spin" size={16} />
-            ) : (
-              <Upload size={16} />
-            )}
+          <Button type="button" onClick={handleUpload} disabled={importing || downloading}>
+            {importing ? <Loader2 className="mr-2 animate-spin" size={16} /> : <Upload size={16} />}
             Importar CSV participantes
           </Button>
           <Button
@@ -155,9 +135,7 @@ export default function AdminImportaciones() {
                 </code>
               </p>
               {selectedFile ? (
-                <p className="mt-2 text-xs text-gray-600">
-                  Archivo seleccionado: {selectedFile.name}
-                </p>
+                <p className="mt-2 text-xs text-gray-600">Archivo seleccionado: {selectedFile.name}</p>
               ) : null}
             </div>
             {errorMessage ? (
@@ -202,8 +180,7 @@ export default function AdminImportaciones() {
             ) : null}
             {!summary ? (
               <p className="mt-4 text-xs text-gray-500">
-                Ejecuta una importación para ver resultados y métricas en esta
-                sección.
+                Ejecuta una importación para ver resultados y métricas en esta sección.
               </p>
             ) : null}
           </Card>
@@ -220,8 +197,8 @@ export default function AdminImportaciones() {
           <Card className="p-4">
             <div className="text-sm font-semibold">Seguridad</div>
             <p className="mt-1 text-sm text-gray-600">
-              Las importaciones requieren un usuario con rol Administrador y
-              quedan registradas en la auditoría del sistema.
+              Las importaciones requieren un usuario con rol Administrador y quedan registradas en la
+              auditoría del sistema.
             </p>
           </Card>
         </div>
