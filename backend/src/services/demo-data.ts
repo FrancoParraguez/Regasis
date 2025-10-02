@@ -99,16 +99,6 @@ function findDemoProviderById(id: string) {
   return providers.find((provider) => provider.id === id);
 }
 
-export function listDemoProviders() {
-  return [
-    {
-      ...provider,
-      createdAt: new Date(provider.createdAt),
-      updatedAt: new Date(provider.updatedAt)
-    }
-  ];
-}
-
 const users: DemoUser[] = [
   {
     id: "demo-admin",
@@ -333,7 +323,6 @@ export function deleteDemoCourse(id: string) {
 
   courses.splice(index, 1);
 
-  // Remove sessions associated to the course so future listings stay consistent.
   for (let i = sessions.length - 1; i >= 0; i -= 1) {
     if (sessions[i]!.courseId === id) {
       sessions.splice(i, 1);
