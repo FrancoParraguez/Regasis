@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
-import { Loader2, Plus, Settings } from "lucide-react";
+import { Loader2, Plus, Settings, X } from "lucide-react";
 
 import { Button, Card, Input, Label, Table } from "../components/ui";
 import { getCurrentUser } from "../services/auth";
@@ -109,6 +109,15 @@ export default function AdminCursos() {
     resetForm();
   };
 
+  const toggleCreateForm = () => {
+    if (showCreateForm) {
+      closeForm();
+    } else {
+      resetForm();
+      setShowCreateForm(true);
+    }
+  };
+
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (saving) return;
@@ -175,13 +184,16 @@ export default function AdminCursos() {
           />
           <Button
             type="button"
-            onClick={() => {
-              setFormError(null);
-              setShowCreateForm(true);
-            }}
-            disabled={showCreateForm}
+            onClick={toggleCreateForm}
+            aria-expanded={showCreateForm}
+            variant={showCreateForm ? "secondary" : "default"}
           >
-            <Plus size={16} className="mr-2" /> Nuevo curso
+            {showCreateForm ? (
+              <X size={16} className="mr-2" />
+            ) : (
+              <Plus size={16} className="mr-2" />
+            )}
+            {showCreateForm ? "Cerrar" : "Nuevo curso"}
           </Button>
           <Button variant="ghost">
             <Settings size={16} /> Configuración
