@@ -1,7 +1,7 @@
-﻿import "express";
+import type { AuthenticatedUser } from "./auth.js";
+
 declare module "express-serve-static-core" {
   interface Request {
-    user?: { id: string; role: "ADMIN"|"INSTRUCTOR"|"REPORTER"; providerId?: string|null };
+    user?: AuthenticatedUser;
   }
 }
-export {};

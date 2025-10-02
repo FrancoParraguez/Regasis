@@ -1,84 +1,122 @@
-﻿import React, { useState } from "react";
+import { useMemo, useState } from "react";
+
 import { Button, Card, Input, Table } from "../components/ui";
-import { reporteAsistencia, reporteCalificaciones } from "../services/reportes";
+import { reporteAsistencia, reporteCalificaciones, type AttendanceReportDTO, type GradeReportDTO } from "../services/reportes";
 import { exportToXlsx } from "../utils/xlsx";
 
-export default function Reporteria(){
-  const [tipo, setTipo] = useState<'asistencia'|'calificaciones'|'mixto'>('asistencia');
+type ReportType = "asistencia" | "calificaciones" | "mixto";
+
+type ReportRow = Record<string, string | number | undefined>;
+
+function mapAttendanceRow(data: AttendanceReportDTO): ReportRow {
+  return {
+    Curso: data.session?.course?.code ?? "",
+    Fecha: data.session?.date?.slice(0, 10) ?? "",
+    Participante: data.enrollment?.participant?.name ?? "",
+    Estado: data.state ?? "",
+    Observación: data.observation ?? "",
+  };
+}
+
+function mapGradeRow(data: GradeReportDTO): ReportRow {
+  return {
+    Curso: data.enrollment?.course?.code ?? "",
+    Participante: data.enrollment?.participant?.name ?? "",
+    Tipo: data.type ?? "",
+    Nota: data.score ?? "",
+    Fecha: data.date?.slice(0, 10) ?? "",
+  };
+}
+
+export default function Reporteria() {
+  const [tipo, setTipo] = useState<ReportType>("asistencia");
   const [desde, setDesde] = useState<string>("");
   const [hasta, setHasta] = useState<string>("");
-  const [rows, setRows] = useState<any[]>([]);
+  const [rows, setRows] = useState<ReportRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  async function consultar(){
+  const columns = useMemo(() => (rows.length ? Object.keys(rows[0]) : ["Curso", "Fecha", "Participante", "Estado/%"]), [rows]);
+  const tableRows = useMemo(
+    () =>
+      rows.length
+        ? rows.map((row) => columns.map((column) => String(row[column] ?? "")))
+        : [
+            ["CUR-001", "2025-10-03", "Ana Soto", "P (100%)"],
+            ["CUR-001", "2025-10-10", "Leandro Ruiz", "A (0%)"],
+          ],
+    [columns, rows],
+  );
+
+  async function consultar() {
     setLoading(true);
-    try{
-      if(tipo === 'asistencia'){
-        const data = await reporteAsistencia({ from: desde || undefined, to: hasta || undefined });
-        setRows(data.map((d:any) => ({
-          Curso: d.session?.course?.code || "",
-          Fecha: d.session?.date?.slice(0,10),
-          Participante: d.enrollment?.participant?.name,
-          Estado: d.state,
-          Obs: d.observation || ""
-        })));
-      }else if(tipo === 'calificaciones'){
-        const data = await reporteCalificaciones({ from: desde || undefined, to: hasta || undefined });
-        setRows(data.map((d:any) => ({
-          Curso: d.enrollment?.course?.code || "",
-          Participante: d.enrollment?.participant?.name,
-          Tipo: d.type,
-          Nota: d.score,
-          Fecha: d.date?.slice(0,10)
-        })));
-      }else{
-        const A = await reporteAsistencia({ from: desde || undefined, to: hasta || undefined });
-        const G = await reporteCalificaciones({ from: desde || undefined, to: hasta || undefined });
+    try {
+      const commonParams = { from: desde || undefined, to: hasta || undefined };
+      if (tipo === "asistencia") {
+        const data = await reporteAsistencia(commonParams);
+        setRows(data.map(mapAttendanceRow));
+      } else if (tipo === "calificaciones") {
+        const data = await reporteCalificaciones(commonParams);
+        setRows(data.map(mapGradeRow));
+      } else {
+        const attendance = await reporteAsistencia(commonParams);
+        const grades = await reporteCalificaciones(commonParams);
         setRows([
-          ...A.map((d:any)=>({ Tipo: "Asistencia", Curso: d.session?.course?.code, Fecha: d.session?.date?.slice(0,10), Participante: d.enrollment?.participant?.name, Estado: d.state })),
-          ...G.map((d:any)=>({ Tipo: "CalificaciÃ³n", Curso: d.enrollment?.course?.code, Fecha: d.date?.slice(0,10), Participante: d.enrollment?.participant?.name, Nota: d.score }))
+          ...attendance.map((dato) => ({ Tipo: "Asistencia", ...mapAttendanceRow(dato) })),
+          ...grades.map((dato) => ({ Tipo: "Calificación", ...mapGradeRow(dato) })),
         ]);
       }
-    } finally { setLoading(false); }
+    } finally {
+      setLoading(false);
+    }
   }
 
-  function exportar(){
-    exportToXlsx(`reporte-${tipo}-${new Date().toISOString().slice(0,10)}.xlsx`, rows);
+  function exportar() {
+    exportToXlsx(`reporte-${tipo}-${new Date().toISOString().slice(0, 10)}.xlsx`, rows);
   }
-
-  const columns = rows.length ? Object.keys(rows[0]) : ["Curso","Fecha","Participante","Estado/%"];
-  const tableRows = rows.length
-    ? rows.map(r => columns.map(c => String(r[c] ?? "")))
-    : [["CUR-001","2025-10-03","Ana Soto","P (100%)"],["CUR-001","2025-10-10","Leandro Ruiz","A (0%)"]];
 
   return (
     <section className="space-y-4">
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Reportes</h1>
         <div className="flex items-center gap-2">
-          <Button onClick={consultar}>{loading? 'Cargandoâ€¦' : 'Consultar'}</Button>
-          <Button onClick={exportar} disabled={!rows.length}>Generar Excel</Button>
+          <Button onClick={consultar}>{loading ? "Cargando…" : "Consultar"}</Button>
+          <Button onClick={exportar} disabled={!rows.length}>
+            Generar Excel
+          </Button>
         </div>
       </header>
       <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-12 lg:col-span-8 space-y-4">
+        <div className="col-span-12 space-y-4 lg:col-span-8">
           <Card className="p-4">
             <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
               <div>
-                <label className="label">Proveedor</label>
-                <Input placeholder="(se usa provider del usuario si es REPORTER)" readOnly />
+                <label className="label" htmlFor="report-provider">
+                  Proveedor
+                </label>
+                <Input id="report-provider" placeholder="(se usa provider del usuario si es REPORTER)" readOnly />
               </div>
               <div>
-                <label className="label">Desde</label>
-                <Input type="date" value={desde} onChange={e=>setDesde(e.target.value)} />
+                <label className="label" htmlFor="report-from">
+                  Desde
+                </label>
+                <Input id="report-from" type="date" value={desde} onChange={(event) => setDesde(event.target.value)} />
               </div>
               <div>
-                <label className="label">Hasta</label>
-                <Input type="date" value={hasta} onChange={e=>setHasta(e.target.value)} />
+                <label className="label" htmlFor="report-to">
+                  Hasta
+                </label>
+                <Input id="report-to" type="date" value={hasta} onChange={(event) => setHasta(event.target.value)} />
               </div>
               <div>
-                <label className="label">Tipo</label>
-                <select className="input" value={tipo} onChange={e=>setTipo(e.target.value as any)}>
+                <label className="label" htmlFor="report-type">
+                  Tipo
+                </label>
+                <select
+                  id="report-type"
+                  className="input"
+                  value={tipo}
+                  onChange={(event) => setTipo(event.target.value as ReportType)}
+                >
                   <option value="asistencia">Asistencia</option>
                   <option value="calificaciones">Calificaciones</option>
                   <option value="mixto">Mixto</option>
@@ -91,10 +129,12 @@ export default function Reporteria(){
             <Table columns={columns} rows={tableRows} />
           </Card>
         </div>
-        <div className="col-span-12 lg:col-span-4 space-y-4">
+        <div className="col-span-12 space-y-4 lg:col-span-4">
           <Card className="p-4">
             <div className="text-sm font-semibold">Alcance</div>
-            <p className="mt-1 text-sm text-gray-600">Los usuarios con rol REPORTER sÃ³lo consultan su proveedor asignado (en backend).</p>
+            <p className="mt-1 text-sm text-gray-600">
+              Los usuarios con rol REPORTER sólo consultan su proveedor asignado (en backend).
+            </p>
           </Card>
         </div>
       </div>
