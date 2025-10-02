@@ -16,7 +16,7 @@ const TEMPLATE_HEADER = [
   "documento",
   "proveedor",
   "codigo_curso",
-  "rol_en_curso",
+  "rol_en_curso"
 ] as const;
 
 const TEMPLATE_SAMPLE_ROW = [
@@ -26,155 +26,20 @@ const TEMPLATE_SAMPLE_ROW = [
   "12345678",
   "Proveedor Demo",
   "CUR-001",
-  "Alumno",
+  "Alumno"
 ];
 
 const TEMPLATE_COLUMN_WIDTHS = [28, 18, 18, 14, 22, 16, 16];
 
-function createTemplateWorkbook(): Buffer {
-  const rows = [TEMPLATE_HEADER, TEMPLATE_SAMPLE_ROW] as const;
-  const sheetXml = buildSheetXml(rows, TEMPLATE_COLUMN_WIDTHS);
-  const createdAt = new Date().toISOString();
-
-  const entries = [
-    {
-      path: "[Content_Types].xml",
-      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
-<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
-  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
-  <Default Extension="xml" ContentType="application/xml"/>
-  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
-  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
-  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
-  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
-  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
-</Types>`),
-    },
-    {
-      path: "_rels/.rels",
-      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
-  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
-</Relationships>`),
-    },
-    {
-      path: "docProps/core.xml",
-      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
-<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
-  <dc:title>Plantilla participantes</dc:title>
-  <dc:subject>Importaciones Regasis</dc:subject>
-  <dc:creator>Regasis</dc:creator>
-  <cp:lastModifiedBy>Regasis</cp:lastModifiedBy>
-  <dcterms:created xsi:type="dcterms:W3CDTF">${createdAt}</dcterms:created>
-  <dcterms:modified xsi:type="dcterms:W3CDTF">${createdAt}</dcterms:modified>
-</cp:coreProperties>`),
-    },
-    {
-      path: "docProps/app.xml",
-      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
-<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
-  <Application>Microsoft Excel</Application>
-  <DocSecurity>0</DocSecurity>
-  <ScaleCrop>false</ScaleCrop>
-  <HeadingPairs>
-    <vt:vector size="2" baseType="variant">
-      <vt:variant>
-        <vt:lpstr>Worksheets</vt:lpstr>
-      </vt:variant>
-      <vt:variant>
-        <vt:i4>1</vt:i4>
-      </vt:variant>
-    </vt:vector>
-  </HeadingPairs>
-  <TitlesOfParts>
-    <vt:vector size="1" baseType="lpstr">
-      <vt:lpstr>Plantilla</vt:lpstr>
-    </vt:vector>
-  </TitlesOfParts>
-  <Company>Regasis</Company>
-  <LinksUpToDate>false</LinksUpToDate>
-  <SharedDoc>false</SharedDoc>
-  <HyperlinksChanged>false</HyperlinksChanged>
-  <AppVersion>16.0300</AppVersion>
-</Properties>`),
-    },
-    {
-      path: "xl/workbook.xml",
-      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
-<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
-  <fileVersion appName="xl"/>
-  <workbookPr date1904="false"/>
-  <bookViews>
-    <workbookView activeTab="0"/>
-  </bookViews>
-  <sheets>
-    <sheet name="Plantilla" sheetId="1" r:id="rId1"/>
-  </sheets>
-  <calcPr calcId="171027"/>
-</workbook>`),
-    },
-    {
-      path: "xl/_rels/workbook.xml.rels",
-      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
-<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
-  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
-  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
-</Relationships>`),
-    },
-    {
-      path: "xl/styles.xml",
-      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
-<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
-  <fonts count="1">
-    <font>
-      <sz val="11"/>
-      <color theme="1"/>
-      <name val="Calibri"/>
-      <family val="2"/>
-    </font>
-  </fonts>
-  <fills count="2">
-    <fill>
-      <patternFill patternType="none"/>
-    </fill>
-    <fill>
-      <patternFill patternType="gray125"/>
-    </fill>
-  </fills>
-  <borders count="1">
-    <border>
-      <left/>
-      <right/>
-      <top/>
-      <bottom/>
-      <diagonal/>
-    </border>
-  </borders>
-  <cellStyleXfs count="1">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
-  </cellStyleXfs>
-  <cellXfs count="1">
-    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
-  </cellXfs>
-  <cellStyles count="1">
-    <cellStyle name="Normal" xfId="0" builtinId="0"/>
-  </cellStyles>
-</styleSheet>`),
-    },
-    {
-      path: "xl/worksheets/sheet1.xml",
-      data: toBuffer(sheetXml),
-    },
-  ];
-
-  return createStoredZip(entries);
-}
-
-function buildSheetXml(rows: readonly (readonly string[])[], widths: readonly number[]) {
+function buildSheetXml(
+  rows: readonly (readonly string[])[],
+  widths: readonly number[]
+) {
   const columnsXml = widths
-    .map((width, index) => `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`)
+    .map(
+      (width, index) =>
+        `<col min="${index + 1}" max="${index + 1}" width="${width}" customWidth="1"/>`
+    )
     .join("");
 
   const rowsXml = rows
@@ -183,7 +48,9 @@ function buildSheetXml(rows: readonly (readonly string[])[], widths: readonly nu
       const cellsXml = cells
         .map((value, colIndex) => {
           const reference = `${columnName(colIndex)}${rowNumber}`;
-          return `<c r="${reference}" t="inlineStr"><is><t>${escapeXml(value)}</t></is></c>`;
+          return `<c r="${reference}" t="inlineStr"><is><t>${escapeXml(
+            value
+          )}</t></is></c>`;
         })
         .join("");
       return `<row r="${rowNumber}">${cellsXml}</row>`;
@@ -307,7 +174,10 @@ function createStoredZip(entries: ZipEntry[]) {
     offset += localHeader.length + fileName.length + entry.data.length;
   }
 
-  const centralDirectorySize = centralSections.reduce((total, section) => total + section.length, 0);
+  const centralDirectorySize = centralSections.reduce(
+    (total, section) => total + section.length,
+    0
+  );
   const centralDirectoryOffset = offset;
 
   const endRecord = Buffer.alloc(22);
@@ -323,100 +193,255 @@ function createStoredZip(entries: ZipEntry[]) {
   return Buffer.concat([...fileSections, ...centralSections, endRecord]);
 }
 
+function createTemplateWorkbook(): Buffer {
+  const rows = [TEMPLATE_HEADER, TEMPLATE_SAMPLE_ROW] as const;
+  const sheetXml = buildSheetXml(rows, TEMPLATE_COLUMN_WIDTHS);
+  const createdAt = new Date().toISOString();
+
+  const entries = [
+    {
+      path: "[Content_Types].xml",
+      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/>
+  <Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/>
+  <Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/>
+  <Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>
+  <Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>
+</Types>`)
+    },
+    {
+      path: "_rels/.rels",
+      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>
+  <Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>
+</Relationships>`)
+    },
+    {
+      path: "docProps/core.xml",
+      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
+<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <dc:title>Plantilla participantes</dc:title>
+  <dc:subject>Importaciones Regasis</dc:subject>
+  <dc:creator>Regasis</dc:creator>
+  <cp:lastModifiedBy>Regasis</cp:lastModifiedBy>
+  <dcterms:created xsi:type="dcterms:W3CDTF">${createdAt}</dcterms:created>
+  <dcterms:modified xsi:type="dcterms:W3CDTF">${createdAt}</dcterms:modified>
+</cp:coreProperties>`)
+    },
+    {
+      path: "docProps/app.xml",
+      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
+<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">
+  <Application>Microsoft Excel</Application>
+  <DocSecurity>0</DocSecurity>
+  <ScaleCrop>false</ScaleCrop>
+  <HeadingPairs>
+    <vt:vector size="2" baseType="variant">
+      <vt:variant>
+        <vt:lpstr>Worksheets</vt:lpstr>
+      </vt:variant>
+      <vt:variant>
+        <vt:i4>1</vt:i4>
+      </vt:variant>
+    </vt:vector>
+  </HeadingPairs>
+  <TitlesOfParts>
+    <vt:vector size="1" baseType="lpstr">
+      <vt:lpstr>Plantilla</vt:lpstr>
+    </vt:vector>
+  </TitlesOfParts>
+  <Company>Regasis</Company>
+  <LinksUpToDate>false</LinksUpToDate>
+  <SharedDoc>false</SharedDoc>
+  <HyperlinksChanged>false</HyperlinksChanged>
+  <AppVersion>16.0300</AppVersion>
+</Properties>`)
+    },
+    {
+      path: "xl/workbook.xml",
+      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
+<workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships">
+  <fileVersion appName="xl"/>
+  <workbookPr date1904="false"/>
+  <bookViews>
+    <workbookView activeTab="0"/>
+  </bookViews>
+  <sheets>
+    <sheet name="Plantilla" sheetId="1" r:id="rId1"/>
+  </sheets>
+  <calcPr calcId="171027"/>
+</workbook>`)
+    },
+    {
+      path: "xl/_rels/workbook.xml.rels",
+      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+</Relationships>`)
+    },
+    {
+      path: "xl/styles.xml",
+      data: toBuffer(`<?xml version="1.0" encoding="UTF-8"?>
+<styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">
+  <fonts count="1">
+    <font>
+      <sz val="11"/>
+      <color theme="1"/>
+      <name val="Calibri"/>
+      <family val="2"/>
+    </font>
+  </fonts>
+  <fills count="2">
+    <fill>
+      <patternFill patternType="none"/>
+    </fill>
+    <fill>
+      <patternFill patternType="gray125"/>
+    </fill>
+  </fills>
+  <borders count="1">
+    <border>
+      <left/>
+      <right/>
+      <top/>
+      <bottom/>
+      <diagonal/>
+    </border>
+  </borders>
+  <cellStyleXfs count="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>
+  </cellStyleXfs>
+  <cellXfs count="1">
+    <xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>
+  </cellXfs>
+  <cellStyles count="1">
+    <cellStyle name="Normal" xfId="0" builtinId="0"/>
+  </cellStyles>
+</styleSheet>`)
+    },
+    {
+      path: "xl/worksheets/sheet1.xml",
+      data: toBuffer(sheetXml)
+    }
+  ];
+
+  return createStoredZip(entries);
+}
+
 const TEMPLATE_BUFFER = createTemplateWorkbook();
 
-router.post("/participantes", requireRole("ADMIN"), upload.single("file"), async (req, res) => {
-  if (!req.file) {
-    return res.status(400).json({ error: "Archivo requerido" });
-  }
-
-  const rows = await parseCsv(req.file.buffer);
-  let created = 0;
-  let updated = 0;
-  const errors: string[] = [];
-
-  const requiredFields = ["email", "nombre", "proveedor", "codigo_curso"] as const;
-
-  for (const [idx, row] of rows.entries()) {
-    try {
-      const missingFields = requiredFields.filter((field) => {
-        const value = row[field];
-        return typeof value !== "string" || value.trim().length === 0;
-      });
-
-      if (missingFields.length > 0) {
-        throw new Error(`Faltan datos obligatorios (${missingFields.join(", ")})`);
-      }
-
-      const email = row.email.trim();
-      const providerName = row.proveedor.trim();
-      const courseCode = row.codigo_curso.trim();
-      const provider = await prisma.provider.upsert({
-        where: { name: providerName },
-        update: {},
-        create: { name: providerName },
-      });
-
-      const course = await prisma.course.findUnique({
-        where: { code: courseCode },
-      });
-
-      if (!course) {
-        throw new Error(`Curso ${courseCode} no existe`);
-      }
-
-      const firstName = row.nombre.trim();
-      const lastName = typeof row.apellido === "string" ? row.apellido.trim() : "";
-      const fullName = lastName ? `${firstName} ${lastName}` : firstName;
-      const participant = await prisma.participant.upsert({
-        where: { email },
-        update: { name: fullName, providerId: provider.id },
-        create: { email, name: fullName, providerId: provider.id },
-      });
-
-      const before = await prisma.enrollment.findUnique({
-        where: {
-          participantId_courseId: {
-            participantId: participant.id,
-            courseId: course.id,
-          },
-        },
-      });
-
-      if (before) {
-        updated += 1;
-      }
-
-      await prisma.enrollment.upsert({
-        where: {
-          participantId_courseId: {
-            participantId: participant.id,
-            courseId: course.id,
-          },
-        },
-        update: {},
-        create: { participantId: participant.id, courseId: course.id },
-      });
-
-      if (!before) {
-        created += 1;
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : "Error desconocido";
-      errors.push(`Fila ${idx + 1}: ${message}`);
+router.post(
+  "/participantes",
+  requireRole("ADMIN"),
+  upload.single("file"),
+  async (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({ error: "Archivo requerido" });
     }
-  }
 
-  res.json({ created, updated, errors, total: rows.length });
-});
+    const rows = await parseCsv(req.file.buffer);
+    let created = 0;
+    let updated = 0;
+    const errors: string[] = [];
+
+    const requiredFields = ["email", "nombre", "proveedor", "codigo_curso"] as const;
+
+    for (const [idx, row] of rows.entries()) {
+      try {
+        const missingFields = requiredFields.filter((field) => {
+          const value = row[field];
+          return typeof value !== "string" || value.trim().length === 0;
+        });
+
+        if (missingFields.length > 0) {
+          throw new Error(
+            `Faltan datos obligatorios (${missingFields.join(", ")})`
+          );
+        }
+
+        const email = row.email.trim();
+        const providerName = row.proveedor.trim();
+        const courseCode = row.codigo_curso.trim();
+
+        const provider = await prisma.provider.upsert({
+          where: { name: providerName },
+          update: {},
+          create: { name: providerName }
+        });
+
+        const course = await prisma.course.findUnique({
+          where: { code: courseCode }
+        });
+
+        if (!course) {
+          throw new Error(`Curso ${courseCode} no existe`);
+        }
+
+        const firstName = row.nombre.trim();
+        const lastName =
+          typeof row.apellido === "string" ? row.apellido.trim() : "";
+        const fullName = lastName ? `${firstName} ${lastName}` : firstName;
+
+        const participant = await prisma.participant.upsert({
+          where: { email },
+          update: { name: fullName, providerId: provider.id },
+          create: { email, name: fullName, providerId: provider.id }
+        });
+
+        const before = await prisma.enrollment.findUnique({
+          where: {
+            participantId_courseId: {
+              participantId: participant.id,
+              courseId: course.id
+            }
+          }
+        });
+
+        if (before) {
+          updated += 1;
+        }
+
+        await prisma.enrollment.upsert({
+          where: {
+            participantId_courseId: {
+              participantId: participant.id,
+              courseId: course.id
+            }
+          },
+          update: {},
+          create: { participantId: participant.id, courseId: course.id }
+        });
+
+        if (!before) {
+          created += 1;
+        }
+      } catch (error) {
+        const message =
+          error instanceof Error ? error.message : "Error desconocido";
+        errors.push(`Fila ${idx + 1}: ${message}`);
+      }
+    }
+
+    res.json({ created, updated, errors, total: rows.length });
+  }
+);
 
 router.get("/participantes/plantilla", requireRole("ADMIN"), (_req, res) => {
   const buffer = TEMPLATE_BUFFER;
   res.setHeader(
     "Content-Type",
-    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
   );
-  res.setHeader("Content-Disposition", "attachment; filename=plantilla_regasis.xlsx");
+  res.setHeader(
+    "Content-Disposition",
+    "attachment; filename=plantilla_regasis.xlsx"
+  );
   res.setHeader("Content-Length", buffer.length.toString());
   res.send(buffer);
 });
