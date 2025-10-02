@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { PrismaClient } from "@prisma/client";
+import { Prisma, PrismaClient } from "@prisma/client";
 import { requireRole } from "../middleware/auth.js";
 import {
   listDemoCourses,
@@ -54,6 +54,15 @@ router.post(
       });
       return res.status(201).json(course);
     } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === "P2003") {
+          return res.status(400).json({ error: "Proveedor inválido. Selecciona un proveedor existente." });
+        }
+        if (error.code === "P2002") {
+          return res.status(400).json({ error: "El código del curso ya está registrado." });
+        }
+      }
+
       if (!isPrismaUnavailable(error)) return next(error);
 
       try {

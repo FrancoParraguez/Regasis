@@ -30,6 +30,13 @@ interface DemoSession {
   date: string;
 }
 
+interface DemoProvider {
+  id: string;
+  name: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
 interface DemoRefreshToken {
   jti: string;
   userId: string;
@@ -39,12 +46,58 @@ interface DemoRefreshToken {
 
 const providerId = "demo-provider";
 
-const provider = {
-  id: providerId,
-  name: "ACME Capacitación",
-  createdAt: new Date("2025-01-01").toISOString(),
-  updatedAt: new Date("2025-01-01").toISOString()
-};
+const providers: DemoProvider[] = [
+  {
+    id: providerId,
+    name: "ACME Capacitación",
+    createdAt: new Date("2025-01-01").toISOString(),
+    updatedAt: new Date("2025-01-01").toISOString()
+  }
+];
+
+export function getDemoProviders() {
+  return providers.map((provider) => ({
+    ...provider,
+    createdAt: new Date(provider.createdAt),
+    updatedAt: new Date(provider.updatedAt)
+  }));
+}
+
+export function createDemoProvider(input: { name: string }) {
+  const name = input.name?.trim();
+  if (!name) {
+    throw new Error("El nombre del proveedor es obligatorio.");
+  }
+
+  const exists = providers.some(
+    (provider) => provider.name.toLowerCase() === name.toLowerCase()
+  );
+
+  if (exists) {
+    throw new Error("Ya existe un proveedor con ese nombre.");
+  }
+
+  const now = new Date();
+  const provider: DemoProvider = {
+    id: randomUUID(),
+    name,
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  };
+
+  providers.push(provider);
+  providers.sort((a, b) => a.name.localeCompare(b.name, "es", { sensitivity: "base" }));
+
+  return {
+    ...provider,
+    createdAt: new Date(provider.createdAt),
+    updatedAt: new Date(provider.updatedAt)
+  };
+}
+
+function findDemoProviderById(id: string) {
+  return providers.find((provider) => provider.id === id);
+}
 
 const users: DemoUser[] = [
   {
@@ -124,41 +177,46 @@ export function listDemoCourses(userId: string, role: Role) {
 }
 
 export function listAllDemoCourses() {
-  return courses.map((course) => ({
-    id: course.id,
-    code: course.code,
-    name: course.name,
-    startDate: new Date(course.startDate),
-    endDate: new Date(course.endDate),
-    providerId: course.providerId,
-    createdAt: new Date(course.createdAt),
-    updatedAt: new Date(course.updatedAt),
-    provider: {
-      ...provider,
-      createdAt: new Date(provider.createdAt),
-      updatedAt: new Date(provider.updatedAt)
-    },
-    instructors: course.instructorIds.map((userId) => {
-      const user = findDemoUserById(userId);
-      return {
-        id: `${course.id}:${userId}`,
-        courseId: course.id,
-        userId,
-        user: user
-          ? {
-              id: user.id,
-              email: user.email,
-              name: user.name,
-              password: user.password,
-              role: user.role,
-              providerId: user.providerId,
-              createdAt: new Date(provider.createdAt),
-              updatedAt: new Date(provider.updatedAt)
-            }
-          : null
-      };
-    })
-  }));
+  return courses.map((course) => {
+    const provider = findDemoProviderById(course.providerId) ?? providers[0]!;
+
+    return {
+      id: course.id,
+      code: course.code,
+      name: course.name,
+      startDate: new Date(course.startDate),
+      endDate: new Date(course.endDate),
+      providerId: course.providerId,
+      createdAt: new Date(course.createdAt),
+      updatedAt: new Date(course.updatedAt),
+      provider: {
+        ...provider,
+        createdAt: new Date(provider.createdAt),
+        updatedAt: new Date(provider.updatedAt)
+      },
+      instructors: course.instructorIds.map((userId) => {
+        const user = findDemoUserById(userId);
+
+        return {
+          id: `${course.id}:${userId}`,
+          courseId: course.id,
+          userId,
+          user: user
+            ? {
+                id: user.id,
+                email: user.email,
+                name: user.name,
+                password: user.password,
+                role: user.role,
+                providerId: user.providerId,
+                createdAt: new Date(provider.createdAt),
+                updatedAt: new Date(provider.updatedAt)
+              }
+            : null
+        };
+      })
+    };
+  });
 }
 
 export function listDemoSessions(userId: string) {
@@ -217,6 +275,10 @@ export function createDemoCourse(input: {
   }
   if (!providerId) {
     throw new Error("Proveedor requerido");
+  }
+
+  if (!findDemoProviderById(providerId)) {
+    throw new Error("Proveedor inválido. Selecciona un proveedor existente.");
   }
 
   const now = new Date();
