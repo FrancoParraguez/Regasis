@@ -10,8 +10,10 @@ import {
 
 type ImportStatus = "idle" | "uploading" | "downloading";
 
+type InputElement = globalThis.HTMLInputElement;
+
 export default function AdminImportaciones() {
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const fileInputRef = useRef<InputElement | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [status, setStatus] = useState<ImportStatus>("idle");
   const [summary, setSummary] = useState<ImportSummary | null>(null);
@@ -21,7 +23,7 @@ export default function AdminImportaciones() {
   const importing = status === "uploading";
   const downloading = status === "downloading";
 
-  const selectFile = useCallback((event: ChangeEvent<HTMLInputElement>) => {
+  const selectFile = useCallback((event: ChangeEvent<InputElement>) => {
     const [file] = event.target.files ?? [];
     setSelectedFile(file ?? null);
     setErrorMessage(null);
@@ -61,14 +63,14 @@ export default function AdminImportaciones() {
 
     try {
       const blob = await descargarPlantillaParticipantes();
-      const url = URL.createObjectURL(blob);
+      const url = globalThis.URL.createObjectURL(blob);
       const anchor = document.createElement("a");
       anchor.href = url;
       anchor.download = "plantilla_regasis.xlsx";
       document.body.append(anchor);
       anchor.click();
       anchor.remove();
-      URL.revokeObjectURL(url);
+      globalThis.URL.revokeObjectURL(url);
     } catch (error) {
       const message =
         error instanceof Error

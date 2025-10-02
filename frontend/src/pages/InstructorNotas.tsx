@@ -36,6 +36,9 @@ type EnrollmentRow = {
   grades: Partial<Record<GradeType, GradeCell>>;
 };
 
+type FormElement = globalThis.HTMLFormElement;
+type InputElement = globalThis.HTMLInputElement;
+
 const GRADE_TYPES: GradeType[] = ["P1", "P2", "EXAMEN", "PRACTICA", "OTRO"];
 
 export default function InstructorNotas() {
@@ -54,18 +57,74 @@ export default function InstructorNotas() {
     null
   );
   const [archivo, setArchivo] = useState<File | null>(null);
-  const [nuevaEvaluacion, setNuevaEvaluacion] = useState<GradeType | "">("");
+  const [nuevaEvaluacion, setNuevaEvaluacion] = useState("");
+  const [nuevaEvaluacionError, setNuevaEvaluacionError] = useState<string | null>(
+    null
+  );
   const [evaluacionSeleccionada, setEvaluacionSeleccionada] = useState<
     GradeType | ""
   >("");
   const [modoImportacion, setModoImportacion] = useState<GradeUpdateMode>(
     "missing"
   );
+  const [cursoBusqueda, setCursoBusqueda] = useState("");
+  const [fechaInicioFiltro, setFechaInicioFiltro] = useState("");
+  const [fechaFinFiltro, setFechaFinFiltro] = useState("");
 
   const evaluacionesDisponibles = useMemo(
     () => GRADE_TYPES.filter((tipo) => !evaluaciones.includes(tipo)),
     [evaluaciones]
   );
+
+  const cursosFiltrados = useMemo(() => {
+    const normalizar = (valor: string | null | undefined) =>
+      valor?.trim().toLowerCase() ?? "";
+    const termino = cursoBusqueda.trim().toLowerCase();
+
+    const parseFecha = (valor: string) => {
+      if (!valor) return null;
+      const fecha = new Date(valor);
+      return Number.isNaN(fecha.getTime()) ? null : fecha;
+    };
+
+    const inicio = parseFecha(fechaInicioFiltro);
+    const fin = parseFecha(fechaFinFiltro);
+
+    return cursos.filter((curso) => {
+      if (termino) {
+        const coincideTermino = [
+          normalizar(curso.code),
+          normalizar(curso.name),
+          normalizar(curso.senceCode ?? "")
+        ].some((campo) => campo.includes(termino));
+        if (!coincideTermino) return false;
+      }
+
+      if (inicio) {
+        const fechaInicioCurso = curso.startDate ? new Date(curso.startDate) : null;
+        if (
+          !fechaInicioCurso ||
+          Number.isNaN(fechaInicioCurso.getTime()) ||
+          fechaInicioCurso < inicio
+        ) {
+          return false;
+        }
+      }
+
+      if (fin) {
+        const fechaFinCurso = curso.endDate ? new Date(curso.endDate) : null;
+        if (
+          !fechaFinCurso ||
+          Number.isNaN(fechaFinCurso.getTime()) ||
+          fechaFinCurso > fin
+        ) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [cursos, cursoBusqueda, fechaInicioFiltro, fechaFinFiltro]);
 
   const evaluacionSeleccionadaTieneNotas = useMemo(() => {
     if (!evaluacionSeleccionada) return false;
@@ -87,18 +146,28 @@ export default function InstructorNotas() {
         endDate: curso.endDate ?? ""
       }));
       setCursos(mapped);
-      if (mapped[0]) {
-        setCursoId((prev) =>
-          prev && mapped.some((curso) => curso.id === prev) ? prev : mapped[0].id
-        );
-      } else {
+      if (!mapped.length) {
         setCursoId("");
+        return;
       }
+      setCursoId((prev) =>
+        prev && mapped.some((curso) => curso.id === prev) ? prev : mapped[0].id
+      );
     })();
     return () => {
       cancelled = true;
     };
   }, [user?.role]);
+
+  useEffect(() => {
+    if (!cursosFiltrados.length) {
+      if (cursoId) setCursoId("");
+      return;
+    }
+    if (!cursoId || !cursosFiltrados.some((curso) => curso.id === cursoId)) {
+      setCursoId(cursosFiltrados[0].id);
+    }
+  }, [cursoId, cursosFiltrados]);
 
   useEffect(() => {
     if (!cursoId) return;
@@ -115,6 +184,7 @@ export default function InstructorNotas() {
     return () => {
       cancelled = true;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recargamos al cambiar de curso
   }, [cursoId]);
 
   useEffect(() => {
@@ -126,15 +196,6 @@ export default function InstructorNotas() {
   useEffect(() => {
     setModoImportacion("missing");
   }, [evaluacionSeleccionada]);
-
-  useEffect(() => {
-    if (
-      nuevaEvaluacion &&
-      !evaluacionesDisponibles.includes(nuevaEvaluacion as GradeType)
-    ) {
-      setNuevaEvaluacion("");
-    }
-  }, [evaluacionesDisponibles, nuevaEvaluacion]);
 
   function crearClaveCelda(enrollmentId: string, evaluacion: GradeType) {
     return `${enrollmentId}::${evaluacion}`;
@@ -244,7 +305,7 @@ export default function InstructorNotas() {
     }
   }
 
-  async function importarNotas(event: FormEvent<HTMLFormElement>) {
+  async function importarNotas(event: FormEvent<FormElement>) {
     event.preventDefault();
     const formElement = event.currentTarget;
     if (!cursoId || !archivo || !evaluacionSeleccionada) return;
@@ -268,15 +329,26 @@ export default function InstructorNotas() {
   }
 
   function agregarEvaluacion() {
-    if (!nuevaEvaluacion) return;
+    const valor = nuevaEvaluacion.trim();
+    if (!valor) return;
+    const normalizado = valor.toUpperCase();
+    const tipo = GRADE_TYPES.find(
+      (gradeType) => gradeType.toUpperCase() === normalizado
+    );
+    if (!tipo) {
+      setNuevaEvaluacionError(
+        "Tipo de evaluación no válido. Usa una de las opciones sugeridas."
+      );
+      return;
+    }
     setEvaluaciones((prev) => {
-      if (prev.includes(nuevaEvaluacion)) return prev;
-      const combinadas = [...prev, nuevaEvaluacion];
+      if (prev.includes(tipo)) return prev;
+      const combinadas = [...prev, tipo];
       const ordenadas = GRADE_TYPES.filter((tipo) => combinadas.includes(tipo));
       setEditingValues((valores) => {
         const siguientes = { ...valores };
         rows.forEach((fila) => {
-          const clave = crearClaveCelda(fila.enrollmentId, nuevaEvaluacion);
+          const clave = crearClaveCelda(fila.enrollmentId, tipo);
           if (!(clave in siguientes)) siguientes[clave] = "";
         });
         return siguientes;
@@ -284,6 +356,7 @@ export default function InstructorNotas() {
       return ordenadas;
     });
     setNuevaEvaluacion("");
+    setNuevaEvaluacionError(null);
   }
 
   function eliminarEvaluacion(tipo: GradeType) {
@@ -376,7 +449,7 @@ export default function InstructorNotas() {
   }
 
   function manejarKeyDown(
-    event: KeyboardEvent<HTMLInputElement>,
+    event: KeyboardEvent<InputElement>,
     enrollmentId: string,
     evaluacion: GradeType
   ) {
@@ -391,22 +464,67 @@ export default function InstructorNotas() {
   );
 
   return (
-    <section className="space-y-4">
-      <header className="flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-xl font-semibold">Notas</h1>
-        <div className="flex items-center gap-2">
-          <select
-            className="input"
-            value={cursoId}
-            onChange={(event) => setCursoId(event.target.value)}
-          >
-            {cursos.map((curso) => (
-              <option key={curso.id} value={curso.id}>
-                {curso.code} • {curso.name}
-              </option>
-            ))}
-          </select>
+    <section className="space-y-6">
+      <header className="space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h1 className="text-xl font-semibold">Notas</h1>
         </div>
+        <Card className="p-4">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
+              <Label htmlFor="buscarCurso">Buscar curso</Label>
+              <Input
+                id="buscarCurso"
+                placeholder="Código interno, código SENCE o nombre"
+                value={cursoBusqueda}
+                onChange={(event) => setCursoBusqueda(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="fechaInicio">Fecha inicio</Label>
+              <Input
+                id="fechaInicio"
+                type="date"
+                value={fechaInicioFiltro}
+                onChange={(event) => setFechaInicioFiltro(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="fechaFin">Fecha término</Label>
+              <Input
+                id="fechaFin"
+                type="date"
+                value={fechaFinFiltro}
+                onChange={(event) => setFechaFinFiltro(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor="cursoSeleccionado">Selecciona un curso</Label>
+              <select
+                id="cursoSeleccionado"
+                className="input"
+                value={cursoId}
+                onChange={(event) => setCursoId(event.target.value)}
+              >
+                <option value="" disabled>
+                  {cursosFiltrados.length === 0
+                    ? "Sin cursos disponibles"
+                    : "Selecciona un curso"}
+                </option>
+                {cursosFiltrados.map((curso) => (
+                  <option key={curso.id} value={curso.id}>
+                    {curso.code} • {curso.name}
+                  </option>
+                ))}
+              </select>
+              {cursosFiltrados.length === 0 && (
+                <p className="text-xs text-gray-500">
+                  Ajusta los filtros para ver cursos disponibles.
+                </p>
+              )}
+            </div>
+          </div>
+        </Card>
       </header>
       <Card className="overflow-hidden">
         <div className="flex flex-wrap items-start justify-between gap-4 border-b border-gray-100 p-4">
@@ -423,30 +541,31 @@ export default function InstructorNotas() {
             <Label htmlFor="nuevaEvaluacion" className="text-sm font-medium">
               Nueva evaluación
             </Label>
-            <select
-              id="nuevaEvaluacion"
-              className="input"
-              value={nuevaEvaluacion}
-              onChange={(event) =>
-                setNuevaEvaluacion(event.target.value as GradeType | "")
-              }
-              disabled={evaluacionesDisponibles.length === 0}
-            >
-              <option value="" disabled>
-                {evaluacionesDisponibles.length === 0
-                  ? "Sin tipos disponibles"
-                  : "Selecciona un tipo"}
-              </option>
-              {evaluacionesDisponibles.map((tipo) => (
-                <option key={tipo} value={tipo}>
-                  {tipo}
-                </option>
-              ))}
-            </select>
+            <div className="flex flex-col gap-1">
+              <Input
+                id="nuevaEvaluacion"
+                list="lista-evaluaciones"
+                placeholder="Ej: E.V.1, EXAMEN"
+                value={nuevaEvaluacion}
+                onChange={(event) => {
+                  setNuevaEvaluacion(event.target.value);
+                  if (nuevaEvaluacionError) setNuevaEvaluacionError(null);
+                }}
+                disabled={evaluacionesDisponibles.length === 0}
+              />
+              <datalist id="lista-evaluaciones">
+                {evaluacionesDisponibles.map((tipo) => (
+                  <option key={tipo} value={tipo} />
+                ))}
+              </datalist>
+              {nuevaEvaluacionError && (
+                <p className="text-xs text-red-600">{nuevaEvaluacionError}</p>
+              )}
+            </div>
             <Button
               type="button"
               onClick={agregarEvaluacion}
-              disabled={!nuevaEvaluacion}
+              disabled={!nuevaEvaluacion || evaluacionesDisponibles.length === 0}
             >
               Agregar
             </Button>
