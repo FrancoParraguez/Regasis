@@ -34,7 +34,10 @@ const TEMPLATE_COLUMN_WIDTHS = [28, 18, 18, 14, 22, 16, 16];
 
 function createTemplateWorkbook(): Buffer {
   const workbook = utils.book_new();
-  const sheet = utils.aoa_to_sheet([TEMPLATE_HEADER, TEMPLATE_SAMPLE_ROW]);
+  const sheet = utils.aoa_to_sheet([
+    [...TEMPLATE_HEADER],
+    [...TEMPLATE_SAMPLE_ROW]
+  ]);
 
   // set column widths
   sheet["!cols"] = TEMPLATE_COLUMN_WIDTHS.map((width) => ({ wch: width }));
@@ -59,7 +62,7 @@ const TEMPLATE_BUFFER = createTemplateWorkbook();
 router.post("/participantes", requireRole("ADMIN"), upload.single("file"), async (req, res) => {
   if (!req.file) return res.status(400).json({ error: "Archivo requerido" });
 
-  const rows = await parseCsv(req.file.buffer);
+  const rows = await parseCsv(req.file.buffer, req.file.mimetype);
   let created = 0;
   let updated = 0;
   const errors: string[] = [];

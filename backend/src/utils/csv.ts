@@ -113,3 +113,10 @@ export async function parseImportFile(
   }
   return parseCsvBuffer(buffer);
 }
+
+export async function parseCsv(
+  buffer: Buffer,
+  mimetype?: string
+): Promise<Record<string, string>[]> {
+  return parseImportFile(buffer, mimetype);
+}
