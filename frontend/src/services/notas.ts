@@ -1,6 +1,6 @@
 import api from "./http";
 
-export type GradeType = "P1" | "P2" | "EXAMEN" | "PRACTICA" | "OTRO";
+export type GradeType = string;
 
 export type GradeDTO = {
   id: string;
@@ -11,21 +11,6 @@ export type GradeDTO = {
   enrollment?: {
     participant: { name: string; email?: string | null };
   };
-};
-
-export type GradeCountOption = {
-  /**
-   * Número de notas configurables para el curso.
-   */
-  value: number;
-  /**
-   * Etiqueta amigable para mostrar en selectores.
-   */
-  label: string;
-  /**
-   * Indica si la opción corresponde al valor predeterminado.
-   */
-  default?: boolean;
 };
 
 export type GradeImportSummary = {
@@ -63,16 +48,13 @@ export async function crearNota(input: { enrollmentId: string; type: GradeType; 
   return data;
 }
 
-export async function listarCantidadNotas(courseId: string) {
-  const { data } = await api.get<GradeCountOption[]>(
-    `/notas/course/${courseId}/cantidad`
-  );
-  return data;
-}
+export type GradeUpdateMode = "missing" | "all";
 
 type CargarNotasOptions = {
-  /** Cantidad de notas que el usuario desea cargar. */
-  cantidad: number;
+  /** Evaluación a la que corresponde la carga. */
+  evaluation: GradeType;
+  /** Determina si se reemplazan todas las notas existentes o sólo las faltantes. */
+  mode: GradeUpdateMode;
   /**
    * Callback opcional para informar progreso en formato de porcentaje
    * (0 a 100).
@@ -83,11 +65,12 @@ type CargarNotasOptions = {
 export async function cargarNotasDesdeArchivo(
   courseId: string,
   file: File,
-  { cantidad, onProgress }: CargarNotasOptions
+  { evaluation, mode, onProgress }: CargarNotasOptions
 ) {
   const formData = new FormData();
   formData.append("file", file);
-  formData.append("cantidad", String(cantidad));
+  formData.append("evaluation", evaluation);
+  formData.append("mode", mode);
 
   const { data } = await api.post<GradeImportSummary>(
     `/notas/course/${courseId}/importar`,
