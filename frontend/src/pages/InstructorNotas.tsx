@@ -68,7 +68,9 @@ export default function InstructorNotas() {
       }));
       setCursos(mapped);
       if (mapped[0]) {
-        setCursoId((prev) => (prev && mapped.some((curso) => curso.id === prev) ? prev : mapped[0].id));
+        setCursoId((prev) =>
+          prev && mapped.some((curso) => curso.id === prev) ? prev : mapped[0].id
+        );
       } else {
         setCursoId("");
       }
@@ -652,8 +654,8 @@ export default function InstructorNotas() {
           {importSummary && (
             <div className="space-y-1 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
               <div>
-                <strong>Resultados:</strong> {importSummary.total} procesados • {" "}
-                {importSummary.created} creados • {importSummary.updated} actualizados • {" "}
+                <strong>Resultados:</strong> {importSummary.total} procesados •{" "}
+                {importSummary.created} creados • {importSummary.updated} actualizados •{" "}
                 {importSummary.skipped} omitidos
               </div>
               {importSummary.errors.length > 0 && (
@@ -675,7 +677,9 @@ export default function InstructorNotas() {
             Utiliza punto o coma como separador decimal.
           </p>
           <p>
-            Puedes guardar rápidamente con <kbd className="rounded border border-gray-300 px-1">Enter</kbd> cuando termines de escribir una nota.
+            Puedes guardar rápidamente con{" "}
+            <kbd className="rounded border border-gray-300 px-1">Enter</kbd>{" "}
+            cuando termines de escribir una nota.
           </p>
         </Card>
       </div>
