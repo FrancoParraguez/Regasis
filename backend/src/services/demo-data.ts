@@ -1,8 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { env } from "../config/env.js";
 import { addDuration } from "../utils/duration.js";
-
-type Role = "ADMIN" | "INSTRUCTOR" | "REPORTER";
+import type { Role } from "../types/roles.js";
 
 interface DemoUser {
   id: string;
@@ -21,6 +20,8 @@ interface DemoCourse {
   endDate: string;
   providerId: string;
   instructorIds: string[];
+  createdAt: string;
+  updatedAt: string;
 }
 
 interface DemoSession {
@@ -80,7 +81,9 @@ const courses: DemoCourse[] = [
     startDate: new Date("2025-10-02").toISOString(),
     endDate: new Date("2025-10-30").toISOString(),
     providerId,
-    instructorIds: ["demo-instructor"]
+    instructorIds: ["demo-instructor"],
+    createdAt: new Date("2025-10-01T12:00:00Z").toISOString(),
+    updatedAt: new Date("2025-10-01T12:00:00Z").toISOString()
   }
 ];
 
@@ -114,6 +117,8 @@ export function listDemoCourses(userId: string, role: Role) {
     name: course.name,
     startDate: new Date(course.startDate),
     endDate: new Date(course.endDate),
+    createdAt: new Date(course.createdAt),
+    updatedAt: new Date(course.updatedAt),
     providerId: course.providerId
   }));
 }
@@ -126,8 +131,8 @@ export function listAllDemoCourses() {
     startDate: new Date(course.startDate),
     endDate: new Date(course.endDate),
     providerId: course.providerId,
-    createdAt: new Date(course.startDate),
-    updatedAt: new Date(course.endDate),
+    createdAt: new Date(course.createdAt),
+    updatedAt: new Date(course.updatedAt),
     provider: {
       ...provider,
       createdAt: new Date(provider.createdAt),
@@ -177,11 +182,115 @@ export function listDemoSessions(userId: string) {
           startDate: new Date(course.startDate),
           endDate: new Date(course.endDate),
           providerId: course.providerId,
-          createdAt: new Date(course.startDate),
-          updatedAt: new Date(course.endDate)
+          createdAt: new Date(course.createdAt),
+          updatedAt: new Date(course.updatedAt)
         }
       };
     });
+}
+
+function normalizeDate(input: string | Date): Date {
+  const date = input instanceof Date ? input : new Date(input);
+  if (Number.isNaN(date.getTime())) {
+    throw new Error("Fecha inválida");
+  }
+  return date;
+}
+
+export function createDemoCourse(input: {
+  code: string;
+  name: string;
+  startDate: Date | string;
+  endDate: Date | string;
+  providerId: string;
+  instructorIds?: string[];
+}) {
+  const code = input.code?.trim();
+  const name = input.name?.trim();
+  const providerId = input.providerId?.trim();
+
+  if (!code) {
+    throw new Error("Código requerido");
+  }
+  if (!name) {
+    throw new Error("Nombre requerido");
+  }
+  if (!providerId) {
+    throw new Error("Proveedor requerido");
+  }
+
+  const now = new Date();
+  const startDate = normalizeDate(input.startDate);
+  const endDate = normalizeDate(input.endDate);
+
+  if (endDate < startDate) {
+    throw new Error("La fecha de término debe ser posterior al inicio");
+  }
+
+  const course: DemoCourse = {
+    id: randomUUID(),
+    code,
+    name,
+    startDate: startDate.toISOString(),
+    endDate: endDate.toISOString(),
+    providerId,
+    instructorIds: [...(input.instructorIds ?? [])],
+    createdAt: now.toISOString(),
+    updatedAt: now.toISOString()
+  };
+
+  courses.push(course);
+
+  return {
+    id: course.id,
+    code: course.code,
+    name: course.name,
+    startDate,
+    endDate,
+    providerId: course.providerId,
+    createdAt: new Date(course.createdAt),
+    updatedAt: new Date(course.updatedAt)
+  };
+}
+
+export function deleteDemoCourse(id: string) {
+  const index = courses.findIndex((course) => course.id === id);
+  if (index === -1) {
+    return false;
+  }
+
+  courses.splice(index, 1);
+
+  // Remove sessions associated to the course so future listings stay consistent.
+  for (let i = sessions.length - 1; i >= 0; i -= 1) {
+    if (sessions[i]!.courseId === id) {
+      sessions.splice(i, 1);
+    }
+  }
+
+  return true;
+}
+
+export function createDemoSession(input: { courseId: string; date: Date | string }) {
+  const course = courses.find((item) => item.id === input.courseId);
+  if (!course) {
+    throw new Error("Curso no encontrado");
+  }
+
+  const date = normalizeDate(input.date);
+  const session: DemoSession = {
+    id: randomUUID(),
+    courseId: course.id,
+    date: date.toISOString()
+  };
+
+  sessions.push(session);
+
+  return {
+    id: session.id,
+    courseId: session.courseId,
+    date
+  };
 }
 
 export function createDemoRefreshToken(userId: string) {
