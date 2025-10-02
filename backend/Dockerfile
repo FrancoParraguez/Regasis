@@ -2,6 +2,7 @@
 
 FROM node:20-alpine AS base
 WORKDIR /app
+ENV NODE_ENV=production
 
 FROM base AS deps
 COPY package.json ./
@@ -14,7 +15,6 @@ RUN npm run build
 RUN npx prisma generate
 
 FROM base AS runner
-ENV NODE_ENV=production
 COPY package.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
