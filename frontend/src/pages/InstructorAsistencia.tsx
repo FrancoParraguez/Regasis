@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { Button, Input, Table } from "../components/ui";
-import { obtenerAsistencia, guardarAsistencia, type AttendanceItemDTO, type AttendanceState } from "../services/asistencias";
+import {
+  obtenerAsistencia,
+  guardarAsistencia,
+  type AttendanceItemDTO,
+  type AttendanceState
+} from "../services/asistencias";
 import { listarSesionesMias } from "../services/sesiones";
 
 type SessionOption = { id: string; label: string };
@@ -21,7 +26,7 @@ export default function InstructorAsistencia() {
       if (cancelled) return;
       const mapped = sessions.map<SessionOption>((session) => ({
         id: session.id,
-        label: `${session.course?.code ?? ""} • ${session.date.slice(0, 10)}`,
+        label: `${session.course?.code ?? ""} • ${session.date.slice(0, 10)}`
       }));
       setSesiones(mapped);
       if (mapped[0]) setSessionId(mapped[0].id);
@@ -52,9 +57,12 @@ export default function InstructorAsistencia() {
     setData((previous) =>
       previous.map((item) =>
         item.enrollment.id === enrollmentId
-          ? { ...item, state: item.state === "PRESENTE" ? "AUSENTE" : "PRESENTE" }
-          : item,
-      ),
+          ? {
+              ...item,
+              state: item.state === "PRESENTE" ? "AUSENTE" : "PRESENTE"
+            }
+          : item
+      )
     );
   }
 
@@ -62,7 +70,7 @@ export default function InstructorAsistencia() {
     const items = data.map((item) => ({
       enrollmentId: item.enrollment.id,
       state: item.state as AttendanceState,
-      observation: item.observation ?? undefined,
+      observation: item.observation ?? undefined
     }));
     await guardarAsistencia(sessionId, items);
   }
@@ -87,11 +95,13 @@ export default function InstructorAsistencia() {
       onChange={(event) =>
         setData((previous) =>
           previous.map((entry) =>
-            entry.enrollment.id === item.enrollment.id ? { ...entry, observation: event.target.value } : entry,
-          ),
+            entry.enrollment.id === item.enrollment.id
+              ? { ...entry, observation: event.target.value }
+              : entry
+          )
         )
       }
-    />,
+    />
   ]);
 
   return (
@@ -99,7 +109,11 @@ export default function InstructorAsistencia() {
       <header className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Asistencia</h1>
         <div className="flex items-center gap-2">
-          <select className="input" value={sessionId} onChange={(event) => setSessionId(event.target.value)}>
+          <select
+            className="input"
+            value={sessionId}
+            onChange={(event) => setSessionId(event.target.value)}
+          >
             {sesiones.map((session) => (
               <option key={session.id} value={session.id}>
                 {session.label}

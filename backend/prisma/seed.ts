@@ -4,9 +4,9 @@ const prisma = new PrismaClient();
 
 async function main(){
   const provider = await prisma.provider.upsert({
-    where: { name: "ACME CapacitaciÃ³n" },
+    where: { name: "ACME Capacitación" },
     update: {},
-    create: { name: "ACME CapacitaciÃ³n" }
+    create: { name: "ACME Capacitación" }
   });
 
   const admin = await prisma.user.upsert({

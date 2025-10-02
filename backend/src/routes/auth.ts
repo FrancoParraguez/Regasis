@@ -19,81 +19,122 @@ const router = Router();
 
 router.post("/login", async (req, res, next) => {
   const { email, password } = req.body as { email: string; password: string };
-  try{
+  try {
     const user = await prisma.user.findUnique({ where: { email } });
-    if(!user) return res.status(401).json({ error: "Credenciales inválidas" });
+    if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
     const ok = await comparePassword(password, user.password);
-    if(!ok) return res.status(401).json({ error: "Credenciales inválidas" });
+    if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
 
-    const accessToken = signAccessToken({ role: user.role, providerId: user.providerId }, user.id);
+    const accessToken = signAccessToken(
+      { role: user.role, providerId: user.providerId },
+      user.id
+    );
     const jti = newJti();
     const expiresAt = addDuration(new Date(), env.REFRESH_EXPIRES);
-    await prisma.refreshToken.create({ data: { jti, userId: user.id, expiresAt } });
+    await prisma.refreshToken.create({
+      data: { jti, userId: user.id, expiresAt }
+    });
 
     return res.json({
       token: accessToken,
       refreshToken: jti,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, providerId: user.providerId }
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        providerId: user.providerId
+      }
     });
-  }catch(error){
-    if(!isPrismaUnavailable(error)) return next(error);
+  } catch (error) {
+    if (!isPrismaUnavailable(error)) return next(error);
 
     const user = findDemoUserByEmail(email);
-    if(!user) return res.status(401).json({ error: "Credenciales inválidas" });
+    if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
     const ok = await comparePassword(password, user.password);
-    if(!ok) return res.status(401).json({ error: "Credenciales inválidas" });
+    if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
 
-    const accessToken = signAccessToken({ role: user.role, providerId: user.providerId }, user.id);
+    const accessToken = signAccessToken(
+      { role: user.role, providerId: user.providerId },
+      user.id
+    );
     const demoRefresh = createDemoRefreshToken(user.id);
 
     return res.json({
       token: accessToken,
       refreshToken: demoRefresh.jti,
-      user: { id: user.id, name: user.name, email: user.email, role: user.role, providerId: user.providerId }
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+        providerId: user.providerId
+      }
     });
   }
 });
 
 router.post("/refresh", async (req, res, next) => {
   const { refreshToken } = req.body as { refreshToken: string };
-  if(!refreshToken) return res.status(400).json({ error: "refreshToken requerido" });
-  try{
-    const rt = await prisma.refreshToken.findUnique({ where: { jti: refreshToken }, include: { user: true } });
-    if(!rt || rt.revoked || rt.expiresAt < new Date()) return res.status(401).json({ error: "refreshToken inválido" });
+  if (!refreshToken)
+    return res.status(400).json({ error: "refreshToken requerido" });
+  try {
+    const rt = await prisma.refreshToken.findUnique({
+      where: { jti: refreshToken },
+      include: { user: true }
+    });
+    if (!rt || rt.revoked || rt.expiresAt < new Date())
+      return res.status(401).json({ error: "refreshToken inválido" });
 
-    await prisma.refreshToken.update({ where: { jti: refreshToken }, data: { revoked: true } });
+    await prisma.refreshToken.update({
+      where: { jti: refreshToken },
+      data: { revoked: true }
+    });
     const jti = newJti();
     const expiresAt = addDuration(new Date(), env.REFRESH_EXPIRES);
-    await prisma.refreshToken.create({ data: { jti, userId: rt.userId, expiresAt } });
+    await prisma.refreshToken.create({
+      data: { jti, userId: rt.userId, expiresAt }
+    });
 
-    const token = signAccessToken({ role: rt.user.role, providerId: rt.user.providerId }, rt.userId);
+    const token = signAccessToken(
+      { role: rt.user.role, providerId: rt.user.providerId },
+      rt.userId
+    );
     return res.json({ token, refreshToken: jti });
-  }catch(error){
-    if(!isPrismaUnavailable(error)) return next(error);
+  } catch (error) {
+    if (!isPrismaUnavailable(error)) return next(error);
 
     const rt = findDemoRefreshToken(refreshToken);
-    if(!rt || rt.revoked || rt.expiresAt < new Date()) return res.status(401).json({ error: "refreshToken inválido" });
+    if (!rt || rt.revoked || rt.expiresAt < new Date())
+      return res.status(401).json({ error: "refreshToken inválido" });
 
     const replacement = replaceDemoRefreshToken(refreshToken);
-    if(!replacement) return res.status(401).json({ error: "refreshToken inválido" });
+    if (!replacement)
+      return res.status(401).json({ error: "refreshToken inválido" });
 
     const user = findDemoUserById(rt.userId);
-    if(!user) return res.status(401).json({ error: "refreshToken inválido" });
+    if (!user) return res.status(401).json({ error: "refreshToken inválido" });
 
-    const token = signAccessToken({ role: user.role, providerId: user.providerId }, user.id);
+    const token = signAccessToken(
+      { role: user.role, providerId: user.providerId },
+      user.id
+    );
     return res.json({ token, refreshToken: replacement.jti });
   }
 });
 
 router.post("/logout", async (req, res, next) => {
   const { refreshToken } = req.body as { refreshToken: string };
-  if(refreshToken){
-    try{
-      await prisma.refreshToken.update({ where: { jti: refreshToken }, data: { revoked: true } });
-    }catch(error){
-      if(isPrismaUnavailable(error)){
+  if (refreshToken) {
+    try {
+      await prisma.refreshToken.update({
+        where: { jti: refreshToken },
+        data: { revoked: true }
+      });
+    } catch (error) {
+      if (isPrismaUnavailable(error)) {
         revokeDemoRefreshToken(refreshToken);
-      }else{
+      } else {
         return next(error);
       }
     }
