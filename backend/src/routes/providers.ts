@@ -3,7 +3,7 @@ import { Prisma, PrismaClient } from "@prisma/client";
 
 import { requireRole } from "../middleware/auth.js";
 import { isPrismaUnavailable } from "../utils/prisma.js";
-import { createDemoProvider, getDemoProviders } from "../services/demo-data.js";
+import { createDemoProvider, listDemoProviders } from "../services/demo-data.js";
 
 const prisma = new PrismaClient();
 const router = Router();
@@ -19,7 +19,7 @@ router.get(
       return res.json(providers);
     } catch (error) {
       if (!isPrismaUnavailable(error)) return next(error);
-      return res.json(getDemoProviders());
+      return res.json(listDemoProviders());
     }
   }
 );

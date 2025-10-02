@@ -1,5 +1,4 @@
 import { isAxiosError } from "axios";
-
 import api from "./http";
 
 export type ProveedorDTO = {

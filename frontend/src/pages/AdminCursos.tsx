@@ -71,6 +71,7 @@ export default function AdminCursos() {
   const [providerName, setProviderName] = useState("");
   const [providerError, setProviderError] = useState<string | null>(null);
   const [providerSaving, setProviderSaving] = useState(false);
+
   const [formData, setFormData] = useState<CursoFormState>(() => ({
     code: "",
     name: "",
@@ -128,11 +129,9 @@ export default function AdminCursos() {
       if (!fallbackProviderId) {
         return prev;
       }
-
       if (providers.some((provider) => provider.id === prev.providerId)) {
         return prev;
       }
-
       return { ...prev, providerId: fallbackProviderId };
     });
   }, [fallbackProviderId, providers]);
