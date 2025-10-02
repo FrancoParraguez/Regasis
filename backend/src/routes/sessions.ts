@@ -9,7 +9,7 @@ const router = Router();
 
 router.get(
   "/mias",
-  requireRole("INSTRUCTOR"),
+  requireRole("INSTRUCTOR", "ADMIN"),
   async (req: Request, res: Response, next: NextFunction) => {
     const user = req.user!;
     const userId = user.id;
