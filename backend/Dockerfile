@@ -5,8 +5,8 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 FROM base AS deps
-COPY package.json ./
-RUN npm install
+COPY package*.json ./
+RUN npm install --include=dev
 
 FROM base AS builder
 COPY --from=deps /app/node_modules ./node_modules
@@ -15,7 +15,7 @@ RUN npm run build
 RUN npx prisma generate
 
 FROM base AS runner
-COPY package.json ./
+COPY package*.json ./
 COPY --from=builder /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
 COPY --from=builder /app/prisma ./prisma
