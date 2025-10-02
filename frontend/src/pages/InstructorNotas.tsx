@@ -36,13 +36,12 @@ type EnrollmentRow = {
   grades: Partial<Record<GradeType, GradeCell>>;
 };
 
+const GRADE_TYPES: GradeType[] = ["P1", "P2", "EXAMEN", "PRACTICA", "OTRO"];
+
 export default function InstructorNotas() {
   const { user } = useAuth();
   const [cursoId, setCursoId] = useState<string>("");
   const [cursos, setCursos] = useState<CursoOption[]>([]);
-  const [busquedaCurso, setBusquedaCurso] = useState("");
-  const [filtroFechaInicio, setFiltroFechaInicio] = useState("");
-  const [filtroFechaFin, setFiltroFechaFin] = useState("");
   const [rows, setRows] = useState<EnrollmentRow[]>([]);
   const [evaluaciones, setEvaluaciones] = useState<GradeType[]>([]);
   const [editingValues, setEditingValues] = useState<Record<string, string>>({});
@@ -55,50 +54,23 @@ export default function InstructorNotas() {
     null
   );
   const [archivo, setArchivo] = useState<File | null>(null);
-  const [nuevaEvaluacion, setNuevaEvaluacion] = useState("");
+  const [nuevaEvaluacion, setNuevaEvaluacion] = useState<GradeType | "">("");
   const [evaluacionSeleccionada, setEvaluacionSeleccionada] = useState<
     GradeType | ""
   >("");
   const [modoImportacion, setModoImportacion] = useState<GradeUpdateMode>(
     "missing"
   );
-  const evaluationSuggestions = useMemo(() => {
-    const sugerencias = Array.from({ length: 10 }, (_, index) => `Ev ${index + 1}`);
-    return [...sugerencias, "EXAMEN"];
-  }, []);
 
-  const cursosFiltrados = useMemo(() => {
-    const termino = busquedaCurso.trim().toLowerCase();
-    const inicio = filtroFechaInicio ? new Date(filtroFechaInicio) : null;
-    const fin = filtroFechaFin ? new Date(filtroFechaFin) : null;
+  const evaluacionesDisponibles = useMemo(
+    () => GRADE_TYPES.filter((tipo) => !evaluaciones.includes(tipo)),
+    [evaluaciones]
+  );
 
-    return cursos.filter((curso) => {
-      const campos = [curso.code, curso.name, curso.senceCode ?? ""];
-      if (termino) {
-        const coincideTexto = campos.some((campo) =>
-          campo.toLowerCase().includes(termino)
-        );
-        const coincideFechas = [curso.startDate, curso.endDate]
-          .filter(Boolean)
-          .some((valor) => valor.toLowerCase().includes(termino));
-        if (!coincideTexto && !coincideFechas) {
-          return false;
-        }
-      }
-
-      const fechaInicioCurso = curso.startDate ? new Date(curso.startDate) : null;
-      const fechaFinCurso = curso.endDate ? new Date(curso.endDate) : null;
-
-      if (inicio && fechaInicioCurso && fechaInicioCurso < inicio) {
-        return false;
-      }
-      if (fin && fechaFinCurso && fechaFinCurso > fin) {
-        return false;
-      }
-
-      return true;
-    });
-  }, [busquedaCurso, cursos, filtroFechaFin, filtroFechaInicio]);
+  const evaluacionSeleccionadaTieneNotas = useMemo(() => {
+    if (!evaluacionSeleccionada) return false;
+    return rows.some((row) => Boolean(row.grades[evaluacionSeleccionada]?.score));
+  }, [rows, evaluacionSeleccionada]);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,7 +88,9 @@ export default function InstructorNotas() {
       }));
       setCursos(mapped);
       if (mapped[0]) {
-        setCursoId((prev) => (prev && mapped.some((curso) => curso.id === prev) ? prev : mapped[0].id));
+        setCursoId((prev) =>
+          prev && mapped.some((curso) => curso.id === prev) ? prev : mapped[0].id
+        );
       } else {
         setCursoId("");
       }
@@ -125,18 +99,6 @@ export default function InstructorNotas() {
       cancelled = true;
     };
   }, [user?.role]);
-
-  useEffect(() => {
-    if (cursosFiltrados.length === 0) {
-      if (cursoId !== "") {
-        setCursoId("");
-      }
-      return;
-    }
-    if (!cursoId || !cursosFiltrados.some((curso) => curso.id === cursoId)) {
-      setCursoId(cursosFiltrados[0].id);
-    }
-  }, [cursoId, cursosFiltrados]);
 
   useEffect(() => {
     if (!cursoId) return;
@@ -165,17 +127,14 @@ export default function InstructorNotas() {
     setModoImportacion("missing");
   }, [evaluacionSeleccionada]);
 
-  const evaluacionSeleccionadaTieneNotas = useMemo(() => {
-    if (!evaluacionSeleccionada) return false;
-    return rows.some((row) => Boolean(row.grades[evaluacionSeleccionada]?.score));
-  }, [rows, evaluacionSeleccionada]);
-
-  const nuevaEvaluacionNormalizada = nuevaEvaluacion.trim();
-  const esEvaluacionDuplicada =
-    nuevaEvaluacionNormalizada.length > 0 &&
-    evaluaciones.some(
-      (tipo) => tipo.toLowerCase() === nuevaEvaluacionNormalizada.toLowerCase()
-    );
+  useEffect(() => {
+    if (
+      nuevaEvaluacion &&
+      !evaluacionesDisponibles.includes(nuevaEvaluacion as GradeType)
+    ) {
+      setNuevaEvaluacion("");
+    }
+  }, [evaluacionesDisponibles, nuevaEvaluacion]);
 
   function crearClaveCelda(enrollmentId: string, evaluacion: GradeType) {
     return `${enrollmentId}::${evaluacion}`;
@@ -183,8 +142,7 @@ export default function InstructorNotas() {
 
   function construirFilas(data: GradeDTO[]) {
     const porInscripcion = new Map<string, EnrollmentRow>();
-    const tiposEnDatos: GradeType[] = [];
-    const tiposRegistrados = new Set<string>();
+    const tiposEnDatos = new Set<GradeType>();
 
     data.forEach((nota) => {
       const enrollmentId = nota.enrollmentId;
@@ -204,12 +162,8 @@ export default function InstructorNotas() {
         porInscripcion.set(enrollmentId, fila);
       }
 
-      const tipo = (nota.type?.trim() || "EXAMEN") as GradeType;
-      const claveTipo = tipo.toLowerCase();
-      if (!tiposRegistrados.has(claveTipo)) {
-        tiposRegistrados.add(claveTipo);
-        tiposEnDatos.push(tipo);
-      }
+      const tipo = (nota.type ?? "OTRO") as GradeType;
+      tiposEnDatos.add(tipo);
 
       const scoreValue =
         typeof nota.score === "number" ? nota.score : Number(nota.score);
@@ -233,7 +187,11 @@ export default function InstructorNotas() {
       a.participant.localeCompare(b.participant, "es", { sensitivity: "base" })
     );
 
-    return { filasOrdenadas, evaluacionesDesdeDatos: tiposEnDatos };
+    const evaluacionesDesdeDatos = GRADE_TYPES.filter((tipo) =>
+      tiposEnDatos.has(tipo)
+    );
+
+    return { filasOrdenadas, evaluacionesDesdeDatos };
   }
 
   function construirValoresEdicion(
@@ -253,25 +211,15 @@ export default function InstructorNotas() {
   function aplicarNotas(data: GradeDTO[]) {
     const { filasOrdenadas, evaluacionesDesdeDatos } = construirFilas(data);
 
-    const evaluacionesFinales = (() => {
-      const existentes = [...evaluaciones];
-      const clavesExistentes = new Set(
-        existentes.map((tipo) => tipo.toLowerCase())
-      );
-      evaluacionesDesdeDatos.forEach((tipo) => {
-        const clave = tipo.toLowerCase();
-        if (!clavesExistentes.has(clave)) {
-          clavesExistentes.add(clave);
-          existentes.push(tipo);
-        }
-      });
-      if (existentes.length === 0) {
-        return evaluacionesDesdeDatos.length > 0
-          ? evaluacionesDesdeDatos
-          : ["EXAMEN"];
-      }
-      return existentes;
-    })();
+    const baseEvaluaciones =
+      evaluacionesDesdeDatos.length > 0 ? evaluacionesDesdeDatos : ["P1"];
+
+    const conjuntoFinal = new Set<GradeType>([
+      ...evaluaciones,
+      ...baseEvaluaciones
+    ]);
+    const listaFinal = GRADE_TYPES.filter((tipo) => conjuntoFinal.has(tipo));
+    const evaluacionesFinales = listaFinal.length ? listaFinal : baseEvaluaciones;
 
     setRows(filasOrdenadas);
     setEvaluaciones(evaluacionesFinales);
@@ -279,9 +227,7 @@ export default function InstructorNotas() {
 
     if (
       evaluacionSeleccionada &&
-      !evaluacionesFinales.some(
-        (tipo) => tipo.toLowerCase() === evaluacionSeleccionada.toLowerCase()
-      )
+      !evaluacionesFinales.includes(evaluacionSeleccionada)
     ) {
       setEvaluacionSeleccionada("");
     }
@@ -306,15 +252,11 @@ export default function InstructorNotas() {
     setImportSummary(null);
     setImportProgress(0);
     try {
-      const summary = await cargarNotasDesdeArchivo(
-        cursoId,
-        archivo,
-        {
-          evaluation: evaluacionSeleccionada,
-          mode: modoImportacion,
-          onProgress: setImportProgress
-        }
-      );
+      const summary = await cargarNotasDesdeArchivo(cursoId, archivo, {
+        evaluation: evaluacionSeleccionada,
+        mode: modoImportacion,
+        onProgress: setImportProgress
+      });
       setImportSummary(summary);
       await recargarNotas();
       formElement.reset();
@@ -326,28 +268,20 @@ export default function InstructorNotas() {
   }
 
   function agregarEvaluacion() {
-    const etiqueta = nuevaEvaluacionNormalizada;
-    if (!etiqueta) return;
-    const clave = etiqueta.toLowerCase();
-    const existe = evaluaciones.some(
-      (tipo) => tipo.toLowerCase() === clave
-    );
-    if (existe) {
-      setNuevaEvaluacion("");
-      return;
-    }
-
-    const siguientes = [...evaluaciones, etiqueta];
-    setEvaluaciones(siguientes);
-    setEditingValues((valores) => {
-      const siguientesValores = { ...valores };
-      rows.forEach((fila) => {
-        const claveCelda = crearClaveCelda(fila.enrollmentId, etiqueta);
-        if (!(claveCelda in siguientesValores)) {
-          siguientesValores[claveCelda] = "";
-        }
+    if (!nuevaEvaluacion) return;
+    setEvaluaciones((prev) => {
+      if (prev.includes(nuevaEvaluacion)) return prev;
+      const combinadas = [...prev, nuevaEvaluacion];
+      const ordenadas = GRADE_TYPES.filter((tipo) => combinadas.includes(tipo));
+      setEditingValues((valores) => {
+        const siguientes = { ...valores };
+        rows.forEach((fila) => {
+          const clave = crearClaveCelda(fila.enrollmentId, nuevaEvaluacion);
+          if (!(clave in siguientes)) siguientes[clave] = "";
+        });
+        return siguientes;
       });
-      return siguientesValores;
+      return ordenadas;
     });
     setNuevaEvaluacion("");
   }
@@ -434,9 +368,7 @@ export default function InstructorNotas() {
       await recargarNotas();
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : "No se pudo guardar la nota";
+        error instanceof Error ? error.message : "No se pudo guardar la nota";
       setCellErrors((prev) => ({ ...prev, [clave]: message }));
     } finally {
       setSavingCell(null);
@@ -460,68 +392,20 @@ export default function InstructorNotas() {
 
   return (
     <section className="space-y-4">
-      <header className="space-y-3">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h1 className="text-xl font-semibold">Notas</h1>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-          <div className="space-y-1">
-            <Label htmlFor="busquedaCurso" className="text-sm font-medium">
-              Buscar curso
-            </Label>
-            <Input
-              id="busquedaCurso"
-              value={busquedaCurso}
-              onChange={(event) => setBusquedaCurso(event.target.value)}
-              placeholder="Código interno, código SENCE o nombre"
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="filtroFechaInicio" className="text-sm font-medium">
-              Inicio desde
-            </Label>
-            <Input
-              id="filtroFechaInicio"
-              type="date"
-              value={filtroFechaInicio}
-              onChange={(event) => setFiltroFechaInicio(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="filtroFechaFin" className="text-sm font-medium">
-              Término hasta
-            </Label>
-            <Input
-              id="filtroFechaFin"
-              type="date"
-              value={filtroFechaFin}
-              onChange={(event) => setFiltroFechaFin(event.target.value)}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor="selectorCurso" className="text-sm font-medium">
-              Selecciona un curso
-            </Label>
-            <select
-              id="selectorCurso"
-              className="input"
-              value={cursoId}
-              onChange={(event) => setCursoId(event.target.value)}
-              disabled={cursosFiltrados.length === 0}
-            >
-              {cursosFiltrados.length === 0 ? (
-                <option value="">Sin cursos disponibles</option>
-              ) : (
-                cursosFiltrados.map((curso) => (
-                  <option key={curso.id} value={curso.id}>
-                    {curso.code}
-                    {curso.senceCode ? ` • SENCE ${curso.senceCode}` : ""}
-                    {curso.name ? ` • ${curso.name}` : ""}
-                  </option>
-                ))
-              )}
-            </select>
-          </div>
+      <header className="flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-xl font-semibold">Notas</h1>
+        <div className="flex items-center gap-2">
+          <select
+            className="input"
+            value={cursoId}
+            onChange={(event) => setCursoId(event.target.value)}
+          >
+            {cursos.map((curso) => (
+              <option key={curso.id} value={curso.id}>
+                {curso.code} • {curso.name}
+              </option>
+            ))}
+          </select>
         </div>
       </header>
       <Card className="overflow-hidden">
@@ -535,34 +419,34 @@ export default function InstructorNotas() {
               columnas cuando lo necesites.
             </p>
           </div>
-          <div className="flex flex-wrap items-end gap-3">
-            <div className="space-y-1">
-              <Label htmlFor="nuevaEvaluacion" className="text-sm font-medium">
-                Nueva evaluación
-              </Label>
-              <Input
-                id="nuevaEvaluacion"
-                list="evaluaciones-sugeridas"
-                className="min-w-[12rem]"
-                value={nuevaEvaluacion}
-                onChange={(event) => setNuevaEvaluacion(event.target.value)}
-                placeholder="Ej: Ev 1, EXAMEN"
-              />
-              <datalist id="evaluaciones-sugeridas">
-                {evaluationSuggestions.map((sugerencia) => (
-                  <option key={sugerencia} value={sugerencia} />
-                ))}
-              </datalist>
-              {esEvaluacionDuplicada ? (
-                <p className="text-xs text-red-600">
-                  Ya existe una evaluación con este nombre.
-                </p>
-              ) : null}
-            </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <Label htmlFor="nuevaEvaluacion" className="text-sm font-medium">
+              Nueva evaluación
+            </Label>
+            <select
+              id="nuevaEvaluacion"
+              className="input"
+              value={nuevaEvaluacion}
+              onChange={(event) =>
+                setNuevaEvaluacion(event.target.value as GradeType | "")
+              }
+              disabled={evaluacionesDisponibles.length === 0}
+            >
+              <option value="" disabled>
+                {evaluacionesDisponibles.length === 0
+                  ? "Sin tipos disponibles"
+                  : "Selecciona un tipo"}
+              </option>
+              {evaluacionesDisponibles.map((tipo) => (
+                <option key={tipo} value={tipo}>
+                  {tipo}
+                </option>
+              ))}
+            </select>
             <Button
               type="button"
               onClick={agregarEvaluacion}
-              disabled={!nuevaEvaluacionNormalizada || esEvaluacionDuplicada}
+              disabled={!nuevaEvaluacion}
             >
               Agregar
             </Button>
@@ -697,7 +581,9 @@ export default function InstructorNotas() {
       </Card>
       <div className="grid gap-4 md:grid-cols-2">
         <Card className="space-y-4 p-4">
-          <h2 className="text-base font-semibold text-gray-700">Importar desde Excel</h2>
+          <h2 className="text-base font-semibold text-gray-700">
+            Importar desde Excel
+          </h2>
           <form className="space-y-3" onSubmit={importarNotas}>
             <div className="space-y-1">
               <Label htmlFor="evaluacionExcel">Evaluación a completar</Label>
@@ -729,9 +615,7 @@ export default function InstructorNotas() {
                   setArchivo(event.target.files ? event.target.files[0] ?? null : null)
                 }
               />
-              {archivo && (
-                <p className="text-xs text-gray-500">{archivo.name}</p>
-              )}
+              {archivo && <p className="text-xs text-gray-500">{archivo.name}</p>}
             </div>
             {evaluacionSeleccionada && evaluacionSeleccionadaTieneNotas && (
               <fieldset className="space-y-2 rounded-md border border-gray-200 p-3 text-sm">
@@ -774,9 +658,9 @@ export default function InstructorNotas() {
           {importSummary && (
             <div className="space-y-1 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
               <div>
-                <strong>Resultados:</strong> {importSummary.total} procesados • {" "}
-                {importSummary.created} creados • {importSummary.updated} actualizados • {" "}
-                {importSummary.skipped} omitidos
+                <strong>Resultados:</strong> {importSummary.total} procesados •{" "}
+                {importSummary.created} creados • {importSummary.updated}{" "}
+                actualizados • {importSummary.skipped} omitidos
               </div>
               {importSummary.errors.length > 0 && (
                 <ul className="list-disc space-y-1 pl-5 text-xs text-red-600">
@@ -793,11 +677,13 @@ export default function InstructorNotas() {
             Recomendaciones de carga
           </h2>
           <p>
-            Las notas aceptan valores decimales entre <strong>1.0</strong> y <strong>7.0</strong>.
-            Utiliza punto o coma como separador decimal.
+            Las notas aceptan valores decimales entre <strong>1.0</strong> y{" "}
+            <strong>7.0</strong>. Utiliza punto o coma como separador decimal.
           </p>
           <p>
-            Puedes guardar rápidamente con <kbd className="rounded border border-gray-300 px-1">Enter</kbd> cuando termines de escribir una nota.
+            Puedes guardar rápidamente con{" "}
+            <kbd className="rounded border border-gray-300 px-1">Enter</kbd>{" "}
+            cuando termines de escribir una nota.
           </p>
         </Card>
       </div>
