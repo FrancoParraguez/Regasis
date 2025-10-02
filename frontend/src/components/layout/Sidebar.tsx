@@ -17,12 +17,7 @@ export function Sidebar({ open, items, onNavigate }: SidebarProps) {
   const role: Role = user?.role ?? "ADMIN";
 
   return (
-    <aside
-      className={clsx(
-        "col-span-12 md:col-span-3 lg:col-span-2",
-        open ? "block" : "hidden md:block"
-      )}
-    >
+    <aside className={clsx("col-span-12 md:col-span-3 lg:col-span-2", open ? "block" : "hidden md:block")}>
       <div className="sticky top-4 space-y-3">
         <nav className="card p-2">
           {items.map((item) => {
@@ -31,9 +26,7 @@ export function Sidebar({ open, items, onNavigate }: SidebarProps) {
               <NavLink
                 key={item.path}
                 to={item.path}
-                className={({ isActive }) =>
-                  clsx("nav-btn w-full", isActive && "active")
-                }
+                className={({ isActive }) => clsx("nav-btn w-full", isActive && "active")}
                 onClick={onNavigate}
               >
                 {Icon ? <Icon size={18} aria-hidden /> : null}
@@ -47,8 +40,7 @@ export function Sidebar({ open, items, onNavigate }: SidebarProps) {
             Rol: <span className="font-semibold">{role}</span>
           </div>
           <div>
-            Zona horaria:{" "}
-            <span className="font-semibold">America/Santiago</span>
+            Zona horaria: <span className="font-semibold">America/Santiago</span>
           </div>
         </div>
       </div>

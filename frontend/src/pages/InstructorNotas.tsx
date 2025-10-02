@@ -1,13 +1,13 @@
 import { useEffect, useState } from "react";
 
 import { Button, Table } from "../components/ui";
-import { listarMisCursos } from "../services/cursos";
 import {
   crearNota,
   listarNotasPorCurso,
   type GradeDTO,
   type GradeType
 } from "../services/notas";
+import { listarMisCursos } from "../services/cursos";
 
 type NotaRow = {
   id: string;

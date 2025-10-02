@@ -94,29 +94,31 @@ const sessions: DemoSession[] = [
 
 const refreshTokens = new Map<string, DemoRefreshToken>();
 
-export function findDemoUserByEmail(email: string){
+export function findDemoUserByEmail(email: string) {
   return users.find((user) => user.email === email);
 }
 
-export function findDemoUserById(id: string){
+export function findDemoUserById(id: string) {
   return users.find((user) => user.id === id);
 }
 
-export function listDemoCourses(userId: string, role: Role){
-  const targetCourses = role === "INSTRUCTOR"
-    ? courses.filter((course) => course.instructorIds.includes(userId))
-    : courses;
+export function listDemoCourses(userId: string, role: Role) {
+  const targetCourses =
+    role === "INSTRUCTOR"
+      ? courses.filter((course) => course.instructorIds.includes(userId))
+      : courses;
 
   return targetCourses.map((course) => ({
     id: course.id,
     code: course.code,
     name: course.name,
     startDate: new Date(course.startDate),
-    endDate: new Date(course.endDate)
+    endDate: new Date(course.endDate),
+    providerId: course.providerId
   }));
 }
 
-export function listAllDemoCourses(){
+export function listAllDemoCourses() {
   return courses.map((course) => ({
     id: course.id,
     code: course.code,
@@ -139,23 +141,25 @@ export function listAllDemoCourses(){
         userId,
         user: user
           ? {
-            id: user.id,
-            email: user.email,
-            name: user.name,
-            password: user.password,
-            role: user.role,
-            providerId: user.providerId,
-            createdAt: new Date(provider.createdAt),
-            updatedAt: new Date(provider.updatedAt)
-          }
+              id: user.id,
+              email: user.email,
+              name: user.name,
+              password: user.password,
+              role: user.role,
+              providerId: user.providerId,
+              createdAt: new Date(provider.createdAt),
+              updatedAt: new Date(provider.updatedAt)
+            }
           : null
       };
     })
   }));
 }
 
-export function listDemoSessions(userId: string){
-  const instructorCourses = courses.filter((course) => course.instructorIds.includes(userId));
+export function listDemoSessions(userId: string) {
+  const instructorCourses = courses.filter((course) =>
+    course.instructorIds.includes(userId)
+  );
   const courseIds = new Set(instructorCourses.map((course) => course.id));
 
   return sessions
@@ -180,7 +184,7 @@ export function listDemoSessions(userId: string){
     });
 }
 
-export function createDemoRefreshToken(userId: string){
+export function createDemoRefreshToken(userId: string) {
   const jti = randomUUID();
   const expiresAt = addDuration(new Date(), env.REFRESH_EXPIRES);
   const entry: DemoRefreshToken = { jti, userId, expiresAt, revoked: false };
@@ -188,20 +192,20 @@ export function createDemoRefreshToken(userId: string){
   return entry;
 }
 
-export function findDemoRefreshToken(jti: string){
+export function findDemoRefreshToken(jti: string) {
   return refreshTokens.get(jti);
 }
 
-export function revokeDemoRefreshToken(jti: string){
+export function revokeDemoRefreshToken(jti: string) {
   const entry = refreshTokens.get(jti);
-  if(entry){
+  if (entry) {
     entry.revoked = true;
   }
 }
 
-export function replaceDemoRefreshToken(jti: string){
+export function replaceDemoRefreshToken(jti: string) {
   const current = refreshTokens.get(jti);
-  if(!current || current.revoked || current.expiresAt < new Date()){
+  if (!current || current.revoked || current.expiresAt < new Date()) {
     return null;
   }
   current.revoked = true;
