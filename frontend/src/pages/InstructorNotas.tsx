@@ -1,55 +1,101 @@
-﻿import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
+
 import { Button, Table } from "../components/ui";
 import { listarMisCursos } from "../services/cursos";
-import { listarNotasPorCurso, crearNota, GradeType } from "../services/notas";
+import { crearNota, listarNotasPorCurso, type GradeDTO, type GradeType } from "../services/notas";
 
-export default function InstructorNotas(){
+type NotaRow = {
+  id: string;
+  participante: string;
+  tipo: GradeType;
+  nota: string;
+  fecha: string;
+};
+
+type CursoOption = { id: string; code: string; name: string };
+
+export default function InstructorNotas() {
   const [cursoId, setCursoId] = useState<string>("");
-  const [cursos, setCursos] = useState<{ id:string; code:string; name:string }[]>([]);
-  const [rows, setRows] = useState<any[]>([]);
+  const [cursos, setCursos] = useState<CursoOption[]>([]);
+  const [rows, setRows] = useState<NotaRow[]>([]);
   const [loading, setLoading] = useState(false);
 
-  useEffect(()=>{ (async()=>{
-    const cs = await listarMisCursos();
-    const mapped = cs.map(c => ({ id: c.id, code: c.code, name: c.name }));
-    setCursos(mapped);
-    if(mapped[0]) setCursoId(mapped[0].id);
-  })(); }, []);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const cs = await listarMisCursos();
+      if (cancelled) return;
+      const mapped = cs.map<CursoOption>((curso) => ({ id: curso.id, code: curso.code, name: curso.name }));
+      setCursos(mapped);
+      if (mapped[0]) setCursoId(mapped[0].id);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
-  useEffect(()=>{ (async()=>{
-    if(!cursoId) return; setLoading(true);
-    try{
-      const data = await listarNotasPorCurso(cursoId);
-      setRows(data.map(d => ({ id: d.id, Participante: d.enrollment?.participant?.name || "", Tipo: d.type, Nota: d.score.toFixed(1), Fecha: d.date.slice(0,10) })));
-    }finally{ setLoading(false); }
-  })(); }, [cursoId]);
+  useEffect(() => {
+    if (!cursoId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const data = await listarNotasPorCurso(cursoId);
+        if (!cancelled) setRows(formatRows(data));
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [cursoId]);
 
-  async function agregar(){
-    const enrollmentId = prompt("ID de inscripciÃ³n (enrollmentId):")?.trim();
-    const type = (prompt("Tipo (P1,P2,EXAMEN,PRACTICA,OTRO):") || "P1").toUpperCase() as GradeType;
-    const score = Number(prompt("Nota (1.0 a 7.0):") || "6.0");
-    if(!enrollmentId || isNaN(score)) return;
-    await crearNota({ enrollmentId, type, score });
-    const data = await listarNotasPorCurso(cursoId);
-    setRows(data.map(d => ({ id: d.id, Participante: d.enrollment?.participant?.name || "", Tipo: d.type, Nota: d.score.toFixed(1), Fecha: d.date.slice(0,10) })));
+  function formatRows(data: GradeDTO[]): NotaRow[] {
+    return data.map((nota) => ({
+      id: nota.id,
+      participante: nota.enrollment?.participant?.name ?? "",
+      tipo: nota.type,
+      nota: nota.score.toFixed(1),
+      fecha: nota.date.slice(0, 10),
+    }));
   }
 
-  const columns = ["Participante","Tipo","Nota","Fecha"];
-  const tableRows = rows.map(r => [r.Participante, r.Tipo, r.Nota, r.Fecha]);
+  async function agregar() {
+    const enrollmentId = window.prompt("ID de inscripción (enrollmentId):")?.trim();
+    const type = (window.prompt("Tipo (P1,P2,EXAMEN,PRACTICA,OTRO):") || "P1").toUpperCase() as GradeType;
+    const scoreInput = window.prompt("Nota (1.0 a 7.0):") || "6.0";
+    const score = Number(scoreInput);
+    if (!enrollmentId || Number.isNaN(score)) return;
+    await crearNota({ enrollmentId, type, score });
+    const data = await listarNotasPorCurso(cursoId);
+    setRows(formatRows(data));
+  }
+
+  const columns = ["Participante", "Tipo", "Nota", "Fecha"];
+  const tableRows = rows.map((row) => [row.participante, row.tipo, row.nota, row.fecha]);
 
   return (
     <section className="space-y-4">
-      <header className="flex flex-wrap items-center justify_between gap-2">
+      <header className="flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-xl font-semibold">Notas</h1>
         <div className="flex items-center gap-2">
-          <select className="input" value={cursoId} onChange={e=>setCursoId(e.target.value)}>
-            {cursos.map(c => <option key={c.id} value={c.id}>{c.code} â€¢ {c.name}</option>)}
+          <select className="input" value={cursoId} onChange={(event) => setCursoId(event.target.value)}>
+            {cursos.map((curso) => (
+              <option key={curso.id} value={curso.id}>
+                {curso.code} • {curso.name}
+              </option>
+            ))}
           </select>
-          <Button onClick={agregar} disabled={!cursoId || loading}>{loading? '...' : 'Agregar nota'}</Button>
+          <Button onClick={agregar} disabled={!cursoId || loading}>
+            {loading ? "…" : "Agregar nota"}
+          </Button>
         </div>
       </header>
       <Table columns={columns} rows={tableRows} />
-      <div className="text-xs text-gray-500">Rango permitido en backend: 1.0 a 7.0 â€¢ Tipos vÃ¡lidos: P1, P2, EXAMEN, PRACTICA, OTRO.</div>
+      <div className="text-xs text-gray-500">
+        Rango permitido en backend: 1.0 a 7.0 • Tipos válidos: P1, P2, EXAMEN, PRACTICA, OTRO.
+      </div>
     </section>
   );
 }

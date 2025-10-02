@@ -1,28 +1,40 @@
-﻿import React, { createContext, useContext, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useMemo, useState } from "react";
+import type { ReactNode } from "react";
+
 import type { User } from "../services/auth";
 import { getCurrentUser, login as apiLogin, logout as apiLogout } from "../services/auth";
 
-interface AuthCtx {
+type AuthContextValue = {
   user: User | null;
   login: (email: string, password: string) => Promise<User>;
-  logout: () => void;
-}
+  logout: () => Promise<void>;
+};
 
-const Ctx = createContext<AuthCtx>({ user: null, login: async () => { throw new Error("not ready"); }, logout: () => {} });
+const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: React.ReactNode }){
+export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(() => getCurrentUser());
 
-  const value = useMemo<AuthCtx>(() => ({
-    user,
-    async login(email, password){
-      const u = await apiLogin({ email, password });
-      setUser(u);
-      return u;
-    },
-    logout(){ apiLogout(); setUser(null); }
-  }), [user]);
+  const login = useCallback(async (email: string, password: string) => {
+    const nextUser = await apiLogin({ email, password });
+    setUser(nextUser);
+    return nextUser;
+  }, []);
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  const logout = useCallback(async () => {
+    await apiLogout();
+    setUser(null);
+  }, []);
+
+  const value = useMemo<AuthContextValue>(() => ({ user, login, logout }), [login, logout, user]);
+
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
-export function useAuth(){ return useContext(Ctx); }
+
+export function useAuth() {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+}
