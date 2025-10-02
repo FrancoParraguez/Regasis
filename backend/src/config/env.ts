@@ -19,19 +19,19 @@ const defaultRefreshExpires: DurationValue = "7d";
 
 function requireEnv(key: keyof NodeJS.ProcessEnv): string {
   const value = process.env[key];
-  if(!value){
+  if (!value) {
     throw new Error(`Missing required environment variable: ${key}`);
   }
   return value;
 }
 
 function resolveDuration(value: string | undefined, fallback: DurationValue): DurationValue {
-  if(value === undefined || value.trim() === ""){
+  if (value === undefined || value.trim() === "") {
     return fallback;
   }
 
   const numeric = Number(value);
-  if(Number.isFinite(numeric)){
+  if (Number.isFinite(numeric)) {
     return numeric;
   }
 
