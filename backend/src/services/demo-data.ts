@@ -99,6 +99,16 @@ function findDemoProviderById(id: string) {
   return providers.find((provider) => provider.id === id);
 }
 
+export function listDemoProviders() {
+  return [
+    {
+      ...provider,
+      createdAt: new Date(provider.createdAt),
+      updatedAt: new Date(provider.updatedAt)
+    }
+  ];
+}
+
 const users: DemoUser[] = [
   {
     id: "demo-admin",
