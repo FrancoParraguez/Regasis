@@ -244,6 +244,7 @@ export default function AdminCursos() {
             onClick={toggleCreateForm}
             aria-expanded={showCreateForm}
             aria-pressed={showCreateForm}
+            variant={showCreateForm ? "secondary" : "default"}
             className="items-center"
           >
             {showCreateForm ? (
