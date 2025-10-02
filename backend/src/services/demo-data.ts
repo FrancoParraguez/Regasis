@@ -46,6 +46,16 @@ const provider = {
   updatedAt: new Date("2025-01-01").toISOString()
 };
 
+export function listDemoProviders() {
+  return [
+    {
+      ...provider,
+      createdAt: new Date(provider.createdAt),
+      updatedAt: new Date(provider.updatedAt)
+    }
+  ];
+}
+
 const users: DemoUser[] = [
   {
     id: "demo-admin",

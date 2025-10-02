@@ -7,11 +7,13 @@ import gradesRouter from "./grades.js";
 import reportsRouter from "./reports.js";
 import importsRouter from "./imports.js";
 import auditRouter from "./audit.js";
+import providersRouter from "./providers.js";
 import { auth } from "../middleware/auth.js";
 
 const router = Router();
 router.use("/auth", auth(false), authRouter);
 router.use("/cursos", auth(), coursesRouter);
+router.use("/proveedores", auth(), providersRouter);
 router.use("/sesiones", auth(), sessionsRouter);
 router.use("/asistencias", auth(), attendanceRouter);
 router.use("/notas", auth(), gradesRouter);

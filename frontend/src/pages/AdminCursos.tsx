@@ -1,9 +1,12 @@
+/* global HTMLFormElement, HTMLInputElement, HTMLSelectElement */
+
 import { useEffect, useMemo, useState, type ChangeEvent, type FormEvent } from "react";
 import { Loader2, Plus, Settings, X } from "lucide-react";
 
 import { Button, Card, Input, Label, Table } from "../components/ui";
 import { getCurrentUser } from "../services/auth";
 import { crearCurso, listarCursos, type CursoDTO } from "../services/cursos";
+import { listarProveedores, type ProveedorDTO } from "../services/proveedores";
 
 type CursoItem = {
   id: string;
@@ -51,14 +54,23 @@ export default function AdminCursos() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
-  const [defaultProviderId] = useState(() => getCurrentUser()?.providerId ?? "");
+  const userProviderId = useMemo(() => getCurrentUser()?.providerId ?? "", []);
+  const [providers, setProviders] = useState<ProveedorDTO[]>([]);
+  const [providersLoading, setProvidersLoading] = useState(true);
   const [formData, setFormData] = useState<CursoFormState>(() => ({
     code: "",
     name: "",
     startDate: "",
     endDate: "",
-    providerId: defaultProviderId,
+    providerId: userProviderId,
   }));
+
+  const fallbackProviderId = useMemo(() => {
+    if (providers.some((provider) => provider.id === userProviderId)) {
+      return userProviderId;
+    }
+    return providers[0]?.id ?? "";
+  }, [providers, userProviderId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -78,6 +90,39 @@ export default function AdminCursos() {
     };
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const apiProveedores = await listarProveedores();
+        if (cancelled) return;
+        setProviders(apiProveedores);
+      } catch {
+        if (!cancelled) setProviders([]);
+      } finally {
+        if (!cancelled) setProvidersLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    setFormData((prev) => {
+      if (!fallbackProviderId) {
+        return prev;
+      }
+
+      if (providers.some((provider) => provider.id === prev.providerId)) {
+        return prev;
+      }
+
+      return { ...prev, providerId: fallbackProviderId };
+    });
+  }, [fallbackProviderId, providers]);
+
   const cursos = useMemo(
     () =>
       items.filter((curso) =>
@@ -88,7 +133,9 @@ export default function AdminCursos() {
     [query, items]
   );
 
-  const updateFormField = (field: keyof CursoFormState) => (event: ChangeEvent<HTMLInputElement>) => {
+  const updateFormField = (field: keyof CursoFormState) => (
+    event: ChangeEvent<HTMLInputElement | HTMLSelectElement>
+  ) => {
     const { value } = event.target;
     setFormData((prev) => ({ ...prev, [field]: value }));
   };
@@ -99,7 +146,7 @@ export default function AdminCursos() {
       name: "",
       startDate: "",
       endDate: "",
-      providerId: defaultProviderId,
+      providerId: fallbackProviderId,
     });
     setFormError(null);
   };
@@ -130,6 +177,16 @@ export default function AdminCursos() {
 
     if (!trimmed.code || !trimmed.name || !formData.startDate || !formData.endDate || !trimmed.providerId) {
       setFormError("Completa todos los campos obligatorios.");
+      return;
+    }
+
+    if (providersLoading) {
+      setFormError("Espera a que se carguen los proveedores disponibles.");
+      return;
+    }
+
+    if (!providers.some((provider) => provider.id === trimmed.providerId)) {
+      setFormError("Selecciona un proveedor válido para el curso.");
       return;
     }
 
@@ -186,7 +243,9 @@ export default function AdminCursos() {
             type="button"
             onClick={toggleCreateForm}
             aria-expanded={showCreateForm}
+            aria-pressed={showCreateForm}
             variant={showCreateForm ? "secondary" : "default"}
+            className="items-center"
           >
             {showCreateForm ? (
               <X size={16} className="mr-2" />
@@ -243,12 +302,27 @@ export default function AdminCursos() {
               </div>
               <div className="space-y-1 md:col-span-2">
                 <Label htmlFor="nuevo-curso-proveedor">Proveedor</Label>
-                <Input
+                <select
                   id="nuevo-curso-proveedor"
+                  className="input"
                   value={formData.providerId}
                   onChange={updateFormField("providerId")}
-                  placeholder="Ingresa el ID del proveedor"
-                />
+                  disabled={providersLoading || providers.length === 0}
+                >
+                  <option value="" disabled>
+                    {providersLoading ? "Cargando proveedores…" : "Selecciona un proveedor"}
+                  </option>
+                  {providers.map((provider) => (
+                    <option key={provider.id} value={provider.id}>
+                      {provider.name}
+                    </option>
+                  ))}
+                </select>
+                {!providersLoading && providers.length === 0 ? (
+                  <p className="text-xs text-gray-500">
+                    No hay proveedores disponibles. Crea un proveedor antes de registrar un curso.
+                  </p>
+                ) : null}
               </div>
             </div>
 
@@ -260,7 +334,7 @@ export default function AdminCursos() {
               <Button type="button" variant="ghost" onClick={closeForm} disabled={saving}>
                 Cancelar
               </Button>
-              <Button type="submit" disabled={saving}>
+              <Button type="submit" disabled={saving || providersLoading || providers.length === 0}>
                 {saving ? <Loader2 className="mr-2 animate-spin" size={16} /> : null}
                 Guardar curso
               </Button>
