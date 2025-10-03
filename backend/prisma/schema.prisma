@@ -27,6 +27,20 @@ enum GradeType {
   OTRO
 }
 
+enum CourseStatus {
+  DRAFT
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+}
+
+enum ImportStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
 model Provider {
   id           String        @id @default(cuid())
   name         String        @unique
@@ -34,38 +48,55 @@ model Provider {
   updatedAt    DateTime      @updatedAt
   users        User[]
   courses      Course[]
-  participants Participant[]   // inverso de Participant.provider
+  participants Participant[] // inverso de Participant.provider
+  documents    Document[]
+  importJobs   ImportJob[]
 }
 
 model User {
-  id                 String        @id @default(cuid())
-  email              String        @unique
+  id                 String             @id @default(cuid())
+  email              String             @unique
   name               String
+  firstName          String?
+  lastName           String?
+  documentType       String?
+  documentNumber     String?
+  phone              String?
+  isActive           Boolean            @default(true)
   password           String
   role               Role
   providerId         String?
-  provider           Provider?     @relation(fields: [providerId], references: [id])
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime      @updatedAt
+  provider           Provider?          @relation(fields: [providerId], references: [id])
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
   instructorOf       CourseInstructor[]
   auditLogs          AuditLog[]
   refreshTokens      RefreshToken[]
-  updatedAttendances Attendance[]  @relation("UserUpdatedAttendances") // inverso de Attendance.updatedBy
+  updatedAttendances Attendance[]       @relation("UserUpdatedAttendances") // inverso de Attendance.updatedBy
+  documents          Document[]
+  createdImportJobs  ImportJob[]        @relation("UserCreatedImportJobs")
 }
 
 model Course {
-  id          String            @id @default(cuid())
-  code        String            @unique
-  name        String
-  startDate   DateTime
-  endDate     DateTime
-  providerId  String
-  provider    Provider          @relation(fields: [providerId], references: [id])
-  instructors CourseInstructor[]
-  sessions    Session[]
-  enrollments Enrollment[]
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
+  id                String             @id @default(cuid())
+  code              String             @unique
+  name              String
+  startDate         DateTime
+  endDate           DateTime
+  providerId        String
+  provider          Provider           @relation(fields: [providerId], references: [id])
+  status            CourseStatus       @default(DRAFT)
+  description       String?
+  location          String?
+  modality          String?
+  instructors       CourseInstructor[]
+  sessions          Session[]
+  enrollments       Enrollment[]
+  evaluationSchemes EvaluationScheme[]
+  documents         Document[]
+  importJobs        ImportJob[]
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
 }
 
 model CourseInstructor {
@@ -79,14 +110,14 @@ model CourseInstructor {
 }
 
 model Participant {
-  id         String       @id @default(cuid())
-  email      String       @unique
-  name       String
-  providerId String?
-  provider   Provider?    @relation(fields: [providerId], references: [id])
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String
+  providerId  String?
+  provider    Provider?    @relation(fields: [providerId], references: [id])
   enrollments Enrollment[]
-  createdAt  DateTime     @default(now())
-  updatedAt  DateTime     @updatedAt
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
 }
 
 model Enrollment {
@@ -95,44 +126,130 @@ model Enrollment {
   courseId      String
   participant   Participant  @relation(fields: [participantId], references: [id])
   course        Course       @relation(fields: [courseId], references: [id])
-  attendance    Attendance[]   // inverso de Attendance.enrollment
-  grades        Grade[]        // inverso de Grade.enrollment
+  attendance    Attendance[] // inverso de Attendance.enrollment
+  grades        Grade[] // inverso de Grade.enrollment
   createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  role          String?
+  importJobId   String?
+  importJob     ImportJob?   @relation("EnrollmentImportJob", fields: [importJobId], references: [id])
 
   @@unique([participantId, courseId])
+  @@index([importJobId])
 }
 
 model Session {
-  id        String       @id @default(cuid())
-  courseId  String
-  date      DateTime
-  course    Course       @relation(fields: [courseId], references: [id])
+  id         String       @id @default(cuid())
+  courseId   String
+  date       DateTime
+  course     Course       @relation(fields: [courseId], references: [id])
   attendance Attendance[]
 }
 
 model Attendance {
-  id            String     @id @default(cuid())
+  id            String          @id @default(cuid())
   sessionId     String
   enrollmentId  String
   state         AttendanceState
   observation   String?
-  session       Session    @relation(fields: [sessionId], references: [id])
-  enrollment    Enrollment @relation(fields: [enrollmentId], references: [id])
+  session       Session         @relation(fields: [sessionId], references: [id])
+  enrollment    Enrollment      @relation(fields: [enrollmentId], references: [id])
   updatedById   String?
-  updatedBy     User?      @relation("UserUpdatedAttendances", fields: [updatedById], references: [id])
-  updatedAt     DateTime   @updatedAt
-  createdAt     DateTime   @default(now())
+  updatedBy     User?           @relation("UserUpdatedAttendances", fields: [updatedById], references: [id])
+  justification String?
+  importJobId   String?
+  importJob     ImportJob?      @relation("AttendanceImportJob", fields: [importJobId], references: [id])
+  updatedAt     DateTime        @updatedAt
+  createdAt     DateTime        @default(now())
 
   @@unique([sessionId, enrollmentId])
+  @@index([importJobId])
 }
 
 model Grade {
-  id           String     @id @default(cuid())
-  enrollmentId String
-  type         GradeType
-  score        Float
-  date         DateTime   @default(now())
-  enrollment   Enrollment @relation(fields: [enrollmentId], references: [id])
+  id                 String            @id @default(cuid())
+  enrollmentId       String
+  type               GradeType
+  score              Float
+  date               DateTime          @default(now())
+  enrollment         Enrollment        @relation(fields: [enrollmentId], references: [id])
+  evaluationSchemeId String?
+  evaluationScheme   EvaluationScheme? @relation(fields: [evaluationSchemeId], references: [id])
+  observation        String?
+  importJobId        String?
+  importJob          ImportJob?        @relation("GradeImportJob", fields: [importJobId], references: [id])
+
+  @@index([evaluationSchemeId])
+  @@index([importJobId])
+}
+
+model EvaluationScheme {
+  id        String    @id @default(cuid())
+  courseId  String
+  label     String
+  gradeType GradeType
+  weight    Float
+  minScore  Float     @default(0)
+  maxScore  Float     @default(20)
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  course    Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  grades    Grade[]
+}
+
+model Document {
+  id           String      @id @default(cuid())
+  filename     String
+  originalName String
+  mimeType     String
+  size         Int
+  checksum     String?
+  url          String?
+  metadata     Json?
+  createdById  String
+  providerId   String?
+  courseId     String?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  createdBy    User        @relation(fields: [createdById], references: [id])
+  provider     Provider?   @relation(fields: [providerId], references: [id])
+  course       Course?     @relation(fields: [courseId], references: [id])
+  importJobs   ImportJob[] @relation("ImportJobSourceDocument")
+
+  @@index([providerId])
+  @@index([courseId])
+  @@index([createdById])
+}
+
+model ImportJob {
+  id            String       @id @default(cuid())
+  status        ImportStatus @default(PENDING)
+  kind          String
+  providerId    String?
+  courseId      String?
+  documentId    String?
+  createdById   String
+  totalRows     Int          @default(0)
+  processedRows Int          @default(0)
+  successCount  Int          @default(0)
+  failureCount  Int          @default(0)
+  errorMessage  String?
+  startedAt     DateTime?
+  completedAt   DateTime?
+  createdAt     DateTime     @default(now())
+  updatedAt     DateTime     @updatedAt
+  provider      Provider?    @relation(fields: [providerId], references: [id])
+  course        Course?      @relation(fields: [courseId], references: [id])
+  document      Document?    @relation("ImportJobSourceDocument", fields: [documentId], references: [id], onDelete: SetNull)
+  createdBy     User         @relation("UserCreatedImportJobs", fields: [createdById], references: [id])
+  enrollments   Enrollment[] @relation("EnrollmentImportJob")
+  attendances   Attendance[] @relation("AttendanceImportJob")
+  grades        Grade[]      @relation("GradeImportJob")
+
+  @@index([providerId])
+  @@index([courseId])
+  @@index([documentId])
+  @@index([createdById])
 }
 
 model AuditLog {

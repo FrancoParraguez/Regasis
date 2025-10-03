@@ -11,6 +11,7 @@ interface AttendancePayloadItem {
   enrollmentId: string;
   state: AttendanceState;
   observation?: string;
+  justification?: string;
 }
 
 interface AttendancePayload {
@@ -42,12 +43,18 @@ router.post(
       items.map((item) =>
         prisma.attendance.upsert({
           where: { sessionId_enrollmentId: { sessionId, enrollmentId: item.enrollmentId } },
-          update: { state: item.state, observation: item.observation, updatedById: userId },
+          update: {
+            state: item.state,
+            observation: item.observation,
+            justification: item.justification,
+            updatedById: userId
+          },
           create: {
             sessionId,
             enrollmentId: item.enrollmentId,
             state: item.state,
             observation: item.observation,
+            justification: item.justification,
             updatedById: userId
           }
         })

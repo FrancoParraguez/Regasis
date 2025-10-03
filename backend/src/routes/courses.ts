@@ -1,5 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, CourseStatus, type GradeType } from "@prisma/client";
 import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { requireRole } from "../middleware/auth.js";
 import {
@@ -16,7 +16,11 @@ const router = Router();
 router.get("/", requireRole("ADMIN"), async (_req: Request, res: Response, next: NextFunction) => {
   try {
     const courses = await prisma.course.findMany({
-      include: { instructors: { include: { user: true } }, provider: true }
+      include: {
+        instructors: { include: { user: true } },
+        provider: true,
+        evaluationSchemes: true
+      }
     });
     return res.json(courses);
   } catch (error) {
@@ -25,6 +29,14 @@ router.get("/", requireRole("ADMIN"), async (_req: Request, res: Response, next:
   }
 });
 
+interface EvaluationSchemeInput {
+  label: string;
+  gradeType: GradeType;
+  weight: number;
+  minScore?: number;
+  maxScore?: number;
+}
+
 interface CourseBody {
   code: string;
   name: string;
@@ -32,15 +44,49 @@ interface CourseBody {
   endDate: string;
   providerId: string;
   instructorIds?: string[];
+  description?: string;
+  location?: string;
+  modality?: string;
+  status?: CourseStatus;
+  evaluationSchemes?: EvaluationSchemeInput[];
 }
 
 router.post(
   "/",
   requireRole("ADMIN"),
   async (req: Request<unknown, unknown, CourseBody>, res: Response, next: NextFunction) => {
-    const { code, name, startDate, endDate, providerId, instructorIds } = req.body;
+    const {
+      code,
+      name,
+      startDate,
+      endDate,
+      providerId,
+      instructorIds,
+      description,
+      location,
+      modality,
+      status,
+      evaluationSchemes
+    } = req.body;
+
+    const trimmedDescription = description?.trim();
+    const trimmedLocation = location?.trim();
+    const trimmedModality = modality?.trim();
+    const validStatus = status && Object.values(CourseStatus).includes(status) ? status : undefined;
+    const parsedEvaluationSchemes = (evaluationSchemes ?? [])
+      .filter((scheme): scheme is EvaluationSchemeInput =>
+        Boolean(scheme?.label) && typeof scheme.weight === "number"
+      )
+      .map((scheme) => ({
+        label: scheme.label.trim(),
+        gradeType: scheme.gradeType,
+        weight: scheme.weight,
+        minScore: scheme.minScore ?? 0,
+        maxScore: scheme.maxScore ?? 20
+      }));
 
     try {
+
       const course = await prisma.course.create({
         data: {
           code,
@@ -48,10 +94,18 @@ router.post(
           startDate: new Date(startDate),
           endDate: new Date(endDate),
           providerId,
+          description: trimmedDescription || undefined,
+          location: trimmedLocation || undefined,
+          modality: trimmedModality || undefined,
+          status: validStatus,
           instructors: {
             create: (instructorIds ?? []).map((id) => ({ userId: id }))
-          }
-        }
+          },
+          evaluationSchemes: parsedEvaluationSchemes.length
+            ? { create: parsedEvaluationSchemes }
+            : undefined
+        },
+        include: { evaluationSchemes: true }
       });
       return res.status(201).json(course);
     } catch (error) {
@@ -73,7 +127,12 @@ router.post(
           startDate,
           endDate,
           providerId,
-          instructorIds
+          instructorIds,
+          description: trimmedDescription,
+          location: trimmedLocation,
+          modality: trimmedModality,
+          status: validStatus,
+          evaluationSchemes: parsedEvaluationSchemes
         });
         return res.status(201).json(course);
       } catch (creationError) {
@@ -134,7 +193,11 @@ router.get(
           endDate: true,
           createdAt: true,
           updatedAt: true,
-          providerId: true
+          providerId: true,
+          status: true,
+          description: true,
+          location: true,
+          modality: true
         }
       });
       return res.json(courses);

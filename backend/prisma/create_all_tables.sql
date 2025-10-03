@@ -10,6 +10,8 @@ SET search_path TO public;
 CREATE TYPE "Role" AS ENUM ('ADMIN', 'INSTRUCTOR', 'REPORTER');
 CREATE TYPE "AttendanceState" AS ENUM ('PRESENTE', 'AUSENTE', 'JUSTIFICADO');
 CREATE TYPE "GradeType" AS ENUM ('P1', 'P2', 'EXAMEN', 'PRACTICA', 'OTRO');
+CREATE TYPE "CourseStatus" AS ENUM ('DRAFT', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED');
+CREATE TYPE "ImportStatus" AS ENUM ('PENDING', 'PROCESSING', 'COMPLETED', 'FAILED');
 
 -- === Tablas ===
 CREATE TABLE "Provider" (
@@ -23,6 +25,12 @@ CREATE TABLE "User" (
     "id" TEXT PRIMARY KEY,
     "email" TEXT NOT NULL UNIQUE,
     "name" TEXT NOT NULL,
+    "firstName" TEXT,
+    "lastName" TEXT,
+    "documentType" TEXT,
+    "documentNumber" TEXT,
+    "phone" TEXT,
+    "isActive" BOOLEAN NOT NULL DEFAULT TRUE,
     "password" TEXT NOT NULL,
     "role" "Role" NOT NULL,
     "providerId" TEXT,
@@ -39,6 +47,10 @@ CREATE TABLE "Course" (
     "startDate" TIMESTAMP(3) NOT NULL,
     "endDate" TIMESTAMP(3) NOT NULL,
     "providerId" TEXT NOT NULL,
+    "status" "CourseStatus" NOT NULL DEFAULT 'DRAFT',
+    "description" TEXT,
+    "location" TEXT,
+    "modality" TEXT,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Course_providerId_fkey" FOREIGN KEY ("providerId")
@@ -67,16 +79,46 @@ CREATE TABLE "Participant" (
         REFERENCES "Provider"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
+CREATE TABLE "ImportJob" (
+    "id" TEXT PRIMARY KEY,
+    "status" "ImportStatus" NOT NULL DEFAULT 'PENDING',
+    "kind" TEXT NOT NULL,
+    "providerId" TEXT,
+    "courseId" TEXT,
+    "documentId" TEXT,
+    "createdById" TEXT NOT NULL,
+    "totalRows" INTEGER NOT NULL DEFAULT 0,
+    "processedRows" INTEGER NOT NULL DEFAULT 0,
+    "successCount" INTEGER NOT NULL DEFAULT 0,
+    "failureCount" INTEGER NOT NULL DEFAULT 0,
+    "errorMessage" TEXT,
+    "startedAt" TIMESTAMP(3),
+    "completedAt" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "ImportJob_providerId_fkey" FOREIGN KEY ("providerId")
+        REFERENCES "Provider"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "ImportJob_courseId_fkey" FOREIGN KEY ("courseId")
+        REFERENCES "Course"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "ImportJob_createdById_fkey" FOREIGN KEY ("createdById")
+        REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+);
+
 CREATE TABLE "Enrollment" (
     "id" TEXT PRIMARY KEY,
     "participantId" TEXT NOT NULL,
     "courseId" TEXT NOT NULL,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "role" TEXT,
+    "importJobId" TEXT,
     CONSTRAINT "Enrollment_participantId_courseId_key" UNIQUE ("participantId", "courseId"),
     CONSTRAINT "Enrollment_participantId_fkey" FOREIGN KEY ("participantId")
         REFERENCES "Participant"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "Enrollment_courseId_fkey" FOREIGN KEY ("courseId")
-        REFERENCES "Course"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+        REFERENCES "Course"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Enrollment_importJobId_fkey" FOREIGN KEY ("importJobId")
+        REFERENCES "ImportJob"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
 
 CREATE TABLE "Session" (
@@ -94,6 +136,8 @@ CREATE TABLE "Attendance" (
     "state" "AttendanceState" NOT NULL,
     "observation" TEXT,
     "updatedById" TEXT,
+    "justification" TEXT,
+    "importJobId" TEXT,
     "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT "Attendance_sessionId_enrollmentId_key" UNIQUE ("sessionId", "enrollmentId"),
@@ -102,7 +146,23 @@ CREATE TABLE "Attendance" (
     CONSTRAINT "Attendance_enrollmentId_fkey" FOREIGN KEY ("enrollmentId")
         REFERENCES "Enrollment"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
     CONSTRAINT "Attendance_updatedById_fkey" FOREIGN KEY ("updatedById")
-        REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE
+        REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Attendance_importJobId_fkey" FOREIGN KEY ("importJobId")
+        REFERENCES "ImportJob"("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+CREATE TABLE "EvaluationScheme" (
+    "id" TEXT PRIMARY KEY,
+    "courseId" TEXT NOT NULL,
+    "label" TEXT NOT NULL,
+    "gradeType" "GradeType" NOT NULL,
+    "weight" DOUBLE PRECISION NOT NULL,
+    "minScore" DOUBLE PRECISION NOT NULL DEFAULT 0,
+    "maxScore" DOUBLE PRECISION NOT NULL DEFAULT 20,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "EvaluationScheme_courseId_fkey" FOREIGN KEY ("courseId")
+        REFERENCES "Course"("id") ON DELETE CASCADE ON UPDATE CASCADE
 );
 
 CREATE TABLE "Grade" (
@@ -111,9 +171,42 @@ CREATE TABLE "Grade" (
     "type" "GradeType" NOT NULL,
     "score" DOUBLE PRECISION NOT NULL,
     "date" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "evaluationSchemeId" TEXT,
+    "observation" TEXT,
+    "importJobId" TEXT,
     CONSTRAINT "Grade_enrollmentId_fkey" FOREIGN KEY ("enrollmentId")
-        REFERENCES "Enrollment"("id") ON DELETE RESTRICT ON UPDATE CASCADE
+        REFERENCES "Enrollment"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Grade_evaluationSchemeId_fkey" FOREIGN KEY ("evaluationSchemeId")
+        REFERENCES "EvaluationScheme"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Grade_importJobId_fkey" FOREIGN KEY ("importJobId")
+        REFERENCES "ImportJob"("id") ON DELETE SET NULL ON UPDATE CASCADE
 );
+
+CREATE TABLE "Document" (
+    "id" TEXT PRIMARY KEY,
+    "filename" TEXT NOT NULL,
+    "originalName" TEXT NOT NULL,
+    "mimeType" TEXT NOT NULL,
+    "size" INTEGER NOT NULL,
+    "checksum" TEXT,
+    "url" TEXT,
+    "metadata" JSONB,
+    "createdById" TEXT NOT NULL,
+    "providerId" TEXT,
+    "courseId" TEXT,
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updatedAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT "Document_createdById_fkey" FOREIGN KEY ("createdById")
+        REFERENCES "User"("id") ON DELETE RESTRICT ON UPDATE CASCADE,
+    CONSTRAINT "Document_providerId_fkey" FOREIGN KEY ("providerId")
+        REFERENCES "Provider"("id") ON DELETE SET NULL ON UPDATE CASCADE,
+    CONSTRAINT "Document_courseId_fkey" FOREIGN KEY ("courseId")
+        REFERENCES "Course"("id") ON DELETE SET NULL ON UPDATE CASCADE
+);
+
+ALTER TABLE "ImportJob"
+  ADD CONSTRAINT "ImportJob_documentId_fkey"
+  FOREIGN KEY ("documentId") REFERENCES "Document"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 CREATE TABLE "AuditLog" (
     "id" TEXT PRIMARY KEY,
@@ -144,8 +237,18 @@ CREATE TABLE "RefreshToken" (
 CREATE INDEX "AuditLog_userId_idx" ON "AuditLog" ("userId");
 CREATE INDEX "Enrollment_courseId_idx" ON "Enrollment" ("courseId");
 CREATE INDEX "Enrollment_participantId_idx" ON "Enrollment" ("participantId");
+CREATE INDEX "Enrollment_importJobId_idx" ON "Enrollment" ("importJobId");
 CREATE INDEX "Session_courseId_idx" ON "Session" ("courseId");
 CREATE INDEX "Attendance_sessionId_idx" ON "Attendance" ("sessionId");
 CREATE INDEX "Attendance_enrollmentId_idx" ON "Attendance" ("enrollmentId");
+CREATE INDEX "Attendance_importJobId_idx" ON "Attendance" ("importJobId");
 CREATE INDEX "Grade_enrollmentId_idx" ON "Grade" ("enrollmentId");
-
+CREATE INDEX "Grade_evaluationSchemeId_idx" ON "Grade" ("evaluationSchemeId");
+CREATE INDEX "Grade_importJobId_idx" ON "Grade" ("importJobId");
+CREATE INDEX "Document_providerId_idx" ON "Document" ("providerId");
+CREATE INDEX "Document_courseId_idx" ON "Document" ("courseId");
+CREATE INDEX "Document_createdById_idx" ON "Document" ("createdById");
+CREATE INDEX "ImportJob_providerId_idx" ON "ImportJob" ("providerId");
+CREATE INDEX "ImportJob_courseId_idx" ON "ImportJob" ("courseId");
+CREATE INDEX "ImportJob_documentId_idx" ON "ImportJob" ("documentId");
+CREATE INDEX "ImportJob_createdById_idx" ON "ImportJob" ("createdById");

@@ -12,6 +12,8 @@ interface CreateGradePayload {
   type: GradeType;
   score: number;
   date?: string;
+  evaluationSchemeId?: string;
+  observation?: string;
 }
 
 router.get(
@@ -20,7 +22,7 @@ router.get(
   async (req: Request<CourseParams>, res: Response) => {
     const grades = await prisma.grade.findMany({
       where: { enrollment: { courseId: req.params.courseId } },
-      include: { enrollment: { include: { participant: true } } }
+      include: { enrollment: { include: { participant: true } }, evaluationScheme: true }
     });
 
     return res.json(grades);
@@ -31,13 +33,15 @@ router.post(
   "/",
   requireRole("INSTRUCTOR", "ADMIN"),
   async (req: Request<unknown, unknown, CreateGradePayload>, res: Response) => {
-    const { enrollmentId, type, score, date } = req.body;
+    const { enrollmentId, type, score, date, evaluationSchemeId, observation } = req.body;
     const grade = await prisma.grade.create({
       data: {
         enrollmentId,
         type,
         score,
-        date: date ? new Date(date) : undefined
+        date: date ? new Date(date) : undefined,
+        evaluationSchemeId,
+        observation
       }
     });
 
