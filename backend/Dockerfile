@@ -1,7 +1,10 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS base
-RUN apk add --no-cache openssl1.1-compat
+FROM node:20-bookworm-slim AS base
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl libssl3 \
+  && rm -rf /var/lib/apt/lists/*
+ENV PRISMA_CLI_BINARY_TARGETS="debian-openssl-3.0.x"
 WORKDIR /app
 
 FROM base AS deps
