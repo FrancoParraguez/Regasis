@@ -2,11 +2,13 @@
   "name": "regasis",
   "private": true,
   "version": "0.1.0",
-  "packageManager": "pnpm@9.11.0",
+  "packageManager": "npm@10.8.1",
   "scripts": {
-    "dev": "pnpm -r --parallel --stream run dev",
-    "dev:backend": "pnpm --filter ./backend run dev",
-    "dev:frontend": "pnpm --filter ./frontend run dev",
-    "build": "pnpm -r run build"
+    "dev": "node scripts/dev.js",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm run build:backend && npm run build:frontend",
+    "build:backend": "npm --prefix backend run build",
+    "build:frontend": "npm --prefix frontend run build"
   }
 }
