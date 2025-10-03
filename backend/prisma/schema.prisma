@@ -48,7 +48,7 @@ model Provider {
   updatedAt    DateTime      @updatedAt
   users        User[]
   courses      Course[]
-  participants Participant[] // inverso de Participant.provider
+  participants Participant[]
   documents    Document[]
   importJobs   ImportJob[]
 }
@@ -72,7 +72,7 @@ model User {
   instructorOf       CourseInstructor[]
   auditLogs          AuditLog[]
   refreshTokens      RefreshToken[]
-  updatedAttendances Attendance[]       @relation("UserUpdatedAttendances") // inverso de Attendance.updatedBy
+  updatedAttendances Attendance[]       @relation("UserUpdatedAttendances")
   documents          Document[]
   createdImportJobs  ImportJob[]        @relation("UserCreatedImportJobs")
 }
@@ -126,8 +126,8 @@ model Enrollment {
   courseId      String
   participant   Participant  @relation(fields: [participantId], references: [id])
   course        Course       @relation(fields: [courseId], references: [id])
-  attendance    Attendance[] // inverso de Attendance.enrollment
-  grades        Grade[] // inverso de Grade.enrollment
+  attendance    Attendance[]
+  grades        Grade[]
   createdAt     DateTime     @default(now())
   updatedAt     DateTime     @updatedAt
   role          String?
