@@ -20,7 +20,6 @@ yarn-error.log*
 .env.*.local
 
 # Prisma
-backend/prisma/migrations/
 
 # Coverage / testing
 coverage/

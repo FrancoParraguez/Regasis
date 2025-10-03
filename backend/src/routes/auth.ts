@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { PrismaClient } from "@prisma/client";
+import { z } from "zod";
 import { comparePassword } from "../utils/crypto.js";
 import { env } from "../config/env.js";
 import { signAccessToken, newJti } from "../utils/jwt.js";
@@ -19,10 +20,16 @@ import type { Role } from "../types/roles.js";
 const prisma = new PrismaClient();
 const router = Router();
 
-interface LoginBody {
-  email: string;
-  password: string;
-}
+const loginSchema = z.object({
+  email: z
+    .string({ required_error: "El correo es obligatorio" })
+    .trim()
+    .min(1, "El correo es obligatorio")
+    .email("El correo no es válido"),
+  password: z
+    .string({ required_error: "La contraseña es obligatoria" })
+    .min(1, "La contraseña es obligatoria")
+});
 
 type AuthResponseUser = AuthenticatedUser & { email: string; name: string };
 
@@ -44,8 +51,13 @@ function toResponseUser(user: {
 
 router.post(
   "/login",
-  async (req: Request<unknown, unknown, LoginBody>, res: Response, next: NextFunction) => {
-    const { email, password } = req.body;
+  async (req: Request, res: Response, next: NextFunction) => {
+    const parsed = loginSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Credenciales inválidas" });
+    }
+
+    const { email, password } = parsed.data;
     try {
       const user = await prisma.user.findUnique({ where: { email } });
       if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
@@ -102,15 +114,21 @@ router.post(
   }
 );
 
-interface RefreshBody {
-  refreshToken: string;
-}
+const refreshSchema = z.object({
+  refreshToken: z
+    .string({ required_error: "refreshToken requerido" })
+    .trim()
+    .min(1, "refreshToken requerido")
+});
 
 router.post(
   "/refresh",
-  async (req: Request<unknown, unknown, RefreshBody>, res: Response, next: NextFunction) => {
-    const { refreshToken } = req.body;
-    if (!refreshToken) return res.status(400).json({ error: "refreshToken requerido" });
+  async (req: Request, res: Response, next: NextFunction) => {
+    const parsed = refreshSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "refreshToken requerido" });
+    }
+    const { refreshToken } = parsed.data;
     try {
       const rt = await prisma.refreshToken.findUnique({
         where: { jti: refreshToken },
@@ -159,8 +177,9 @@ router.post(
 
 router.post(
   "/logout",
-  async (req: Request<unknown, unknown, Partial<RefreshBody>>, res: Response, next: NextFunction) => {
-    const { refreshToken } = req.body;
+  async (req: Request, res: Response, next: NextFunction) => {
+    const parsed = refreshSchema.partial().safeParse(req.body ?? {});
+    const refreshToken = parsed.success ? parsed.data.refreshToken : undefined;
     if (refreshToken) {
       try {
         await prisma.refreshToken.update({
