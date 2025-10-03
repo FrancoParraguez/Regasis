@@ -20,7 +20,8 @@ export async function reportCalificaciones({ providerId, from, to }:{ providerId
       enrollment: { course: providerId ? { providerId } : undefined }
     },
     include: {
-      enrollment: { include: { participant: true, course: true } }
+      enrollment: { include: { participant: true, course: true } },
+      evaluationScheme: true
     }
   });
 }
