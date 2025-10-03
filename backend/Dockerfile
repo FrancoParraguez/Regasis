@@ -1,7 +1,12 @@
 # syntax=docker/dockerfile:1
 
-FROM node:20-alpine AS base
-RUN apk add --no-cache openssl1.1-compat
+FROM node:20-bookworm-slim AS base
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends openssl libssl3 ca-certificates \
+  && rm -rf /var/lib/apt/lists/*
+ENV PRISMA_CLI_BINARY_TARGETS="debian-openssl-3.0.x"
+ENV PRISMA_QUERY_ENGINE_LIBRARY="/app/node_modules/@prisma/engines/libquery_engine-debian-openssl-3.0.x.so.node"
+ENV PRISMA_SCHEMA_ENGINE_BINARY="/app/node_modules/@prisma/engines/schema-engine-debian-openssl-3.0.x"
 WORKDIR /app
 
 FROM base AS deps
