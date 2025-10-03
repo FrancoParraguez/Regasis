@@ -10,6 +10,21 @@ interface DemoUser {
   password: string;
   role: Role;
   providerId: string;
+  firstName?: string;
+  lastName?: string;
+  documentType?: string;
+  documentNumber?: string;
+  phone?: string;
+  isActive?: boolean;
+}
+
+interface DemoEvaluationScheme {
+  id: string;
+  label: string;
+  gradeType: string;
+  weight: number;
+  minScore: number;
+  maxScore: number;
 }
 
 interface DemoCourse {
@@ -22,6 +37,11 @@ interface DemoCourse {
   instructorIds: string[];
   createdAt: string;
   updatedAt: string;
+  status: string;
+  description?: string;
+  location?: string;
+  modality?: string;
+  evaluationSchemes: DemoEvaluationScheme[];
 }
 
 interface DemoSession {
@@ -106,7 +126,10 @@ const users: DemoUser[] = [
     name: "Admin",
     password: "$2b$10$vL56KzxMpswj5SP8yNQqAuc80Cgmw0DttQbHW6Fy4M4TwWCeekeIG",
     role: "ADMIN",
-    providerId
+    providerId,
+    firstName: "Admin",
+    lastName: "Principal",
+    isActive: true
   },
   {
     id: "demo-instructor",
@@ -114,7 +137,10 @@ const users: DemoUser[] = [
     name: "Instr",
     password: "$2b$10$H4DtPuieLchxIgCrHVZRWuQvVIskbbtfB5Wyw8yQy.yTcJ0gvmQ9G",
     role: "INSTRUCTOR",
-    providerId
+    providerId,
+    firstName: "Inés",
+    lastName: "Tructor",
+    isActive: true
   },
   {
     id: "demo-reporter",
@@ -122,7 +148,10 @@ const users: DemoUser[] = [
     name: "Reporter",
     password: "$2b$10$GYBKKsly4dvsNpFH/mVyfugQWiuAMEDl.KbuvMTjJAdMtvXog4Dii",
     role: "REPORTER",
-    providerId
+    providerId,
+    firstName: "Rey",
+    lastName: "Porter",
+    isActive: true
   }
 ];
 
@@ -136,7 +165,29 @@ const courses: DemoCourse[] = [
     providerId,
     instructorIds: ["demo-instructor"],
     createdAt: new Date("2025-10-01T12:00:00Z").toISOString(),
-    updatedAt: new Date("2025-10-01T12:00:00Z").toISOString()
+    updatedAt: new Date("2025-10-01T12:00:00Z").toISOString(),
+    status: "IN_PROGRESS",
+    description: "Curso introductorio a la seguridad industrial",
+    location: "Sala 1",
+    modality: "Presencial",
+    evaluationSchemes: [
+      {
+        id: "demo-esquema-1",
+        label: "Examen Final",
+        gradeType: "EXAMEN",
+        weight: 0.6,
+        minScore: 0,
+        maxScore: 20
+      },
+      {
+        id: "demo-esquema-2",
+        label: "Prácticas",
+        gradeType: "PRACTICA",
+        weight: 0.4,
+        minScore: 0,
+        maxScore: 20
+      }
+    ]
   }
 ];
 
@@ -172,7 +223,11 @@ export function listDemoCourses(userId: string, role: Role) {
     endDate: new Date(course.endDate),
     createdAt: new Date(course.createdAt),
     updatedAt: new Date(course.updatedAt),
-    providerId: course.providerId
+    providerId: course.providerId,
+    status: course.status,
+    description: course.description,
+    location: course.location,
+    modality: course.modality
   }));
 }
 
@@ -189,6 +244,10 @@ export function listAllDemoCourses() {
       providerId: course.providerId,
       createdAt: new Date(course.createdAt),
       updatedAt: new Date(course.updatedAt),
+      status: course.status,
+      description: course.description,
+      location: course.location,
+      modality: course.modality,
       provider: {
         ...provider,
         createdAt: new Date(provider.createdAt),
@@ -209,12 +268,24 @@ export function listAllDemoCourses() {
                 password: user.password,
                 role: user.role,
                 providerId: user.providerId,
+                firstName: user.firstName,
+                lastName: user.lastName,
                 createdAt: new Date(provider.createdAt),
                 updatedAt: new Date(provider.updatedAt)
               }
             : null
         };
-      })
+      }),
+      evaluationSchemes: course.evaluationSchemes.map((scheme) => ({
+        id: scheme.id,
+        label: scheme.label,
+        gradeType: scheme.gradeType,
+        weight: scheme.weight,
+        minScore: scheme.minScore,
+        maxScore: scheme.maxScore,
+        createdAt: new Date(course.createdAt),
+        updatedAt: new Date(course.updatedAt)
+      }))
     };
   });
 }
@@ -262,6 +333,17 @@ export function createDemoCourse(input: {
   endDate: Date | string;
   providerId: string;
   instructorIds?: string[];
+  description?: string;
+  location?: string;
+  modality?: string;
+  status?: string;
+  evaluationSchemes?: {
+    label: string;
+    gradeType: string;
+    weight: number;
+    minScore?: number;
+    maxScore?: number;
+  }[];
 }) {
   const code = input.code?.trim();
   const name = input.name?.trim();
@@ -289,6 +371,21 @@ export function createDemoCourse(input: {
     throw new Error("La fecha de término debe ser posterior al inicio");
   }
 
+  const status = input.status?.trim() || "DRAFT";
+  const description = input.description?.trim();
+  const location = input.location?.trim();
+  const modality = input.modality?.trim();
+  const evaluationSchemes = (input.evaluationSchemes ?? [])
+    .filter((scheme) => Boolean(scheme?.label) && typeof scheme?.weight === "number")
+    .map((scheme) => ({
+      id: randomUUID(),
+      label: scheme.label.trim(),
+      gradeType: scheme.gradeType,
+      weight: scheme.weight,
+      minScore: scheme.minScore ?? 0,
+      maxScore: scheme.maxScore ?? 20
+    }));
+
   const course: DemoCourse = {
     id: randomUUID(),
     code,
@@ -298,7 +395,12 @@ export function createDemoCourse(input: {
     providerId,
     instructorIds: [...(input.instructorIds ?? [])],
     createdAt: now.toISOString(),
-    updatedAt: now.toISOString()
+    updatedAt: now.toISOString(),
+    status,
+    description,
+    location,
+    modality,
+    evaluationSchemes
   };
 
   courses.push(course);
@@ -311,7 +413,12 @@ export function createDemoCourse(input: {
     endDate,
     providerId: course.providerId,
     createdAt: new Date(course.createdAt),
-    updatedAt: new Date(course.updatedAt)
+    updatedAt: new Date(course.updatedAt),
+    status: course.status,
+    description: course.description,
+    location: course.location,
+    modality: course.modality,
+    evaluationSchemes: course.evaluationSchemes.map((scheme) => ({ ...scheme }))
   };
 }
 
