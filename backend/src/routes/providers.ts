@@ -1,5 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { Prisma, PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 
 import { requireRole } from "../middleware/auth.js";
 import { isPrismaUnavailable } from "../utils/prisma.js";
@@ -46,7 +47,7 @@ router.post(
       });
       return res.status(201).json(provider);
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error instanceof PrismaClientKnownRequestError) {
         if (error.code === "P2002") {
           return res
             .status(400)
