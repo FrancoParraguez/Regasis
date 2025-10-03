@@ -9,7 +9,7 @@ WORKDIR /app
 FROM base AS deps
 ENV NODE_ENV=development
 COPY package*.json ./
-RUN npm install --include=dev
+RUN npm install
 
 FROM base AS builder
 ENV NODE_ENV=development
