@@ -33,7 +33,7 @@ const TEMPLATE_SAMPLE_ROW = [
   "Ana",
   "Pérez",
   "12345678",
-  "Proveedor Demo",
+  "Proveedor Ejemplo",
   "CUR-001",
   "Alumno"
 ];

@@ -1,15 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import type { FormEvent, KeyboardEvent } from "react";
+import type { KeyboardEvent } from "react";
 
 import { Button, Card, Input, Label } from "../components/ui";
 import {
-  cargarNotasDesdeArchivo,
   crearNota,
   listarNotasPorCurso,
   type GradeDTO,
-  type GradeImportSummary,
-  type GradeType,
-  type GradeUpdateMode
+  type GradeType
 } from "../services/notas";
 import { listarCursos, listarMisCursos } from "../services/cursos";
 import { useAuth } from "../hooks/AuthProvider";
@@ -36,7 +33,6 @@ type EnrollmentRow = {
   grades: Partial<Record<GradeType, GradeCell>>;
 };
 
-type FormElement = globalThis.HTMLFormElement;
 type InputElement = globalThis.HTMLInputElement;
 
 const GRADE_TYPES: GradeType[] = ["P1", "P2", "EXAMEN", "PRACTICA", "OTRO"];
@@ -51,21 +47,9 @@ export default function InstructorNotas() {
   const [savingCell, setSavingCell] = useState<string | null>(null);
   const [cellErrors, setCellErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
-  const [importing, setImporting] = useState(false);
-  const [importProgress, setImportProgress] = useState(0);
-  const [importSummary, setImportSummary] = useState<GradeImportSummary | null>(
-    null
-  );
-  const [archivo, setArchivo] = useState<File | null>(null);
   const [nuevaEvaluacion, setNuevaEvaluacion] = useState("");
   const [nuevaEvaluacionError, setNuevaEvaluacionError] = useState<string | null>(
     null
-  );
-  const [evaluacionSeleccionada, setEvaluacionSeleccionada] = useState<
-    GradeType | ""
-  >("");
-  const [modoImportacion, setModoImportacion] = useState<GradeUpdateMode>(
-    "missing"
   );
   const [cursoBusqueda, setCursoBusqueda] = useState("");
   const [fechaInicioFiltro, setFechaInicioFiltro] = useState("");
@@ -126,11 +110,6 @@ export default function InstructorNotas() {
     });
   }, [cursos, cursoBusqueda, fechaInicioFiltro, fechaFinFiltro]);
 
-  const evaluacionSeleccionadaTieneNotas = useMemo(() => {
-    if (!evaluacionSeleccionada) return false;
-    return rows.some((row) => Boolean(row.grades[evaluacionSeleccionada]?.score));
-  }, [rows, evaluacionSeleccionada]);
-
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -186,16 +165,6 @@ export default function InstructorNotas() {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps -- solo recargamos al cambiar de curso
   }, [cursoId]);
-
-  useEffect(() => {
-    setImportSummary(null);
-    setArchivo(null);
-    setModoImportacion("missing");
-  }, [cursoId]);
-
-  useEffect(() => {
-    setModoImportacion("missing");
-  }, [evaluacionSeleccionada]);
 
   function crearClaveCelda(enrollmentId: string, evaluacion: GradeType) {
     return `${enrollmentId}::${evaluacion}`;
@@ -285,13 +254,6 @@ export default function InstructorNotas() {
     setRows(filasOrdenadas);
     setEvaluaciones(evaluacionesFinales);
     setEditingValues(construirValoresEdicion(filasOrdenadas, evaluacionesFinales));
-
-    if (
-      evaluacionSeleccionada &&
-      !evaluacionesFinales.includes(evaluacionSeleccionada)
-    ) {
-      setEvaluacionSeleccionada("");
-    }
   }
 
   async function recargarNotas() {
@@ -302,29 +264,6 @@ export default function InstructorNotas() {
       aplicarNotas(data);
     } finally {
       setLoading(false);
-    }
-  }
-
-  async function importarNotas(event: FormEvent<FormElement>) {
-    event.preventDefault();
-    const formElement = event.currentTarget;
-    if (!cursoId || !archivo || !evaluacionSeleccionada) return;
-    setImporting(true);
-    setImportSummary(null);
-    setImportProgress(0);
-    try {
-      const summary = await cargarNotasDesdeArchivo(cursoId, archivo, {
-        evaluation: evaluacionSeleccionada,
-        mode: modoImportacion,
-        onProgress: setImportProgress
-      });
-      setImportSummary(summary);
-      await recargarNotas();
-      formElement.reset();
-      setArchivo(null);
-    } finally {
-      setImporting(false);
-      setImportProgress(0);
     }
   }
 
@@ -379,9 +318,6 @@ export default function InstructorNotas() {
         });
         return siguientes;
       });
-      if (evaluacionSeleccionada === tipo) {
-        setEvaluacionSeleccionada("");
-      }
       return resultado;
     });
   }
@@ -431,7 +367,6 @@ export default function InstructorNotas() {
     }
 
     setSavingCell(clave);
-    setImportSummary(null);
     try {
       await crearNota({
         enrollmentId,
@@ -458,10 +393,6 @@ export default function InstructorNotas() {
       guardarNota(enrollmentId, evaluacion);
     }
   }
-
-  const puedeImportar = Boolean(
-    cursoId && archivo && evaluacionSeleccionada && !importing
-  );
 
   return (
     <section className="space-y-6">
@@ -698,114 +629,19 @@ export default function InstructorNotas() {
           </table>
         </div>
       </Card>
-      <div className="grid gap-4 md:grid-cols-2">
-        <Card className="space-y-4 p-4">
-          <h2 className="text-base font-semibold text-gray-700">
-            Importar desde Excel
-          </h2>
-          <form className="space-y-3" onSubmit={importarNotas}>
-            <div className="space-y-1">
-              <Label htmlFor="evaluacionExcel">Evaluación a completar</Label>
-              <select
-                id="evaluacionExcel"
-                className="input"
-                value={evaluacionSeleccionada}
-                onChange={(event) =>
-                  setEvaluacionSeleccionada(event.target.value as GradeType | "")
-                }
-              >
-                <option value="" disabled>
-                  Selecciona una evaluación
-                </option>
-                {evaluaciones.map((tipo) => (
-                  <option key={tipo} value={tipo}>
-                    {tipo}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="archivoExcel">Archivo Excel (.xlsx)</Label>
-              <Input
-                id="archivoExcel"
-                type="file"
-                accept=".xlsx,.xls"
-                onChange={(event) =>
-                  setArchivo(event.target.files ? event.target.files[0] ?? null : null)
-                }
-              />
-              {archivo && <p className="text-xs text-gray-500">{archivo.name}</p>}
-            </div>
-            {evaluacionSeleccionada && evaluacionSeleccionadaTieneNotas && (
-              <fieldset className="space-y-2 rounded-md border border-gray-200 p-3 text-sm">
-                <legend className="px-1 text-xs font-semibold uppercase text-gray-500">
-                  Esta evaluación ya tiene notas
-                </legend>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="modo-importacion"
-                    value="missing"
-                    checked={modoImportacion === "missing"}
-                    onChange={() => setModoImportacion("missing")}
-                  />
-                  Completar sólo las notas faltantes
-                </label>
-                <label className="flex items-center gap-2">
-                  <input
-                    type="radio"
-                    name="modo-importacion"
-                    value="all"
-                    checked={modoImportacion === "all"}
-                    onChange={() => setModoImportacion("all")}
-                  />
-                  Reemplazar todas las notas
-                </label>
-              </fieldset>
-            )}
-            {importing && (
-              <div className="text-xs text-gray-500">
-                Subiendo archivo… {importProgress}%
-              </div>
-            )}
-            <div className="flex justify-end">
-              <Button type="submit" disabled={!puedeImportar}>
-                {importing ? "Importando…" : "Importar notas"}
-              </Button>
-            </div>
-          </form>
-          {importSummary && (
-            <div className="space-y-1 rounded-md bg-gray-50 p-3 text-sm text-gray-700">
-              <div>
-                <strong>Resultados:</strong> {importSummary.total} procesados •{" "}
-                {importSummary.created} creados • {importSummary.updated}{" "}
-                actualizados • {importSummary.skipped} omitidos
-              </div>
-              {importSummary.errors.length > 0 && (
-                <ul className="list-disc space-y-1 pl-5 text-xs text-red-600">
-                  {importSummary.errors.map((error, index) => (
-                    <li key={index}>{error}</li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-        </Card>
-        <Card className="space-y-2 p-4 text-sm text-gray-600">
-          <h2 className="text-base font-semibold text-gray-700">
-            Recomendaciones de carga
-          </h2>
-          <p>
-            Las notas aceptan valores decimales entre <strong>1.0</strong> y{" "}
-            <strong>7.0</strong>. Utiliza punto o coma como separador decimal.
-          </p>
-          <p>
-            Puedes guardar rápidamente con{" "}
-            <kbd className="rounded border border-gray-300 px-1">Enter</kbd>{" "}
-            cuando termines de escribir una nota.
-          </p>
-        </Card>
-      </div>
+      <Card className="space-y-2 p-4 text-sm text-gray-600">
+        <h2 className="text-base font-semibold text-gray-700">
+          Recomendaciones de carga
+        </h2>
+        <p>
+          Las notas aceptan valores decimales entre <strong>1.0</strong> y <strong>7.0</strong>.
+          Utiliza punto o coma como separador decimal.
+        </p>
+        <p>
+          Puedes guardar rápidamente con <kbd className="rounded border border-gray-300 px-1">Enter</kbd>
+          cuando termines de escribir una nota.
+        </p>
+      </Card>
     </section>
   );
 }

@@ -42,7 +42,6 @@ Reinsercion
 │  │  │  └─ sessions.ts
 │  │  ├─ server.ts
 │  │  ├─ services
-│  │  │  ├─ demo-data.ts
 │  │  │  └─ report.ts
 │  │  ├─ types
 │  │  │  ├─ attendance.ts
@@ -83,7 +82,6 @@ Reinsercion
 │  │  ├─ pages
 │  │  │  ├─ AdminAuditoria.tsx
 │  │  │  ├─ AdminCursos.tsx
-│  │  │  ├─ AdminImportaciones.tsx
 │  │  │  ├─ InstructorAsistencia.tsx
 │  │  │  ├─ InstructorNotas.tsx
 │  │  │  ├─ InstructorSesiones.tsx
@@ -97,7 +95,6 @@ Reinsercion
 │  │  │  ├─ auth.ts
 │  │  │  ├─ cursos.ts
 │  │  │  ├─ http.ts
-│  │  │  ├─ importaciones.ts
 │  │  │  ├─ notas.ts
 │  │  │  ├─ proveedores.ts
 │  │  │  ├─ reportes.ts

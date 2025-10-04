@@ -1,6 +1,5 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { requireRole } from "../middleware/auth.js";
-import { listDemoSessions, createDemoSession } from "../services/demo-data.js";
 import { isDatabaseUnavailable } from "../utils/database.js";
 import { listSessionsForInstructor, createSession as createSessionRecord } from "../database/sessions.js";
 
@@ -16,8 +15,12 @@ router.get(
       const sessions = await listSessionsForInstructor(userId);
       return res.json(sessions);
     } catch (error) {
-      if (!isDatabaseUnavailable(error)) return next(error);
-      return res.json(listDemoSessions(userId));
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "La base de datos no está disponible. Intenta nuevamente más tarde." });
+      }
+      return next(error);
     }
   }
 );
@@ -37,17 +40,12 @@ router.post(
       const session = await createSessionRecord({ courseId, date: new Date(date) });
       return res.status(201).json(session);
     } catch (error) {
-      if (!isDatabaseUnavailable(error)) return next(error);
-
-      try {
-        const session = createDemoSession({ courseId, date });
-        return res.status(201).json(session);
-      } catch (creationError) {
-        if (creationError instanceof Error && creationError.message === "Curso no encontrado") {
-          return res.status(404).json({ error: creationError.message });
-        }
-        return next(creationError);
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "La base de datos no está disponible. Intenta nuevamente más tarde." });
       }
+      return next(error);
     }
   }
 );

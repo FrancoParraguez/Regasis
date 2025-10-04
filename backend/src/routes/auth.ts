@@ -4,14 +4,6 @@ import { comparePassword } from "../utils/crypto.js";
 import { env } from "../config/env.js";
 import { signAccessToken, newJti } from "../utils/jwt.js";
 import { addDuration } from "../utils/duration.js";
-import {
-  findDemoUserByEmail,
-  createDemoRefreshToken,
-  findDemoRefreshToken,
-  replaceDemoRefreshToken,
-  revokeDemoRefreshToken,
-  findDemoUserById
-} from "../services/demo-data.js";
 import { isDatabaseUnavailable } from "../utils/database.js";
 import {
   findUserByEmail,
@@ -89,31 +81,13 @@ router.post(
         })
       });
     } catch (error) {
-      if (!isDatabaseUnavailable(error)) return next(error);
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "El servicio de autenticación no está disponible. Intenta nuevamente más tarde." });
+      }
 
-      const user = findDemoUserByEmail(email);
-      if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
-
-      const ok = await comparePassword(password, user.password);
-      if (!ok) return res.status(401).json({ error: "Credenciales inválidas" });
-
-      const accessToken = signAccessToken(
-        { role: user.role, providerId: user.providerId },
-        user.id
-      );
-      const demoRefresh = createDemoRefreshToken(user.id);
-
-      return res.json({
-        token: accessToken,
-        refreshToken: demoRefresh.jti,
-        user: toResponseUser({
-          id: user.id,
-          name: user.name,
-          email: user.email,
-          role: user.role,
-          providerId: user.providerId
-        })
-      });
+      return next(error);
     }
   }
 );
@@ -151,24 +125,13 @@ router.post(
       );
       return res.json({ token, refreshToken: jti });
     } catch (error) {
-      if (!isDatabaseUnavailable(error)) return next(error);
-
-      const rt = findDemoRefreshToken(refreshToken);
-      if (!rt || rt.revoked || rt.expiresAt < new Date()) {
-        return res.status(401).json({ error: "refreshToken inválido" });
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "El servicio de autenticación no está disponible. Intenta nuevamente más tarde." });
       }
 
-      const replacement = replaceDemoRefreshToken(refreshToken);
-      if (!replacement) return res.status(401).json({ error: "refreshToken inválido" });
-
-      const user = findDemoUserById(rt.userId);
-      if (!user) return res.status(401).json({ error: "refreshToken inválido" });
-
-      const token = signAccessToken(
-        { role: user.role, providerId: user.providerId },
-        user.id
-      );
-      return res.json({ token, refreshToken: replacement.jti });
+      return next(error);
     }
   }
 );
@@ -183,13 +146,14 @@ router.post(
         await revokeRefreshToken(refreshToken);
       } catch (error) {
         if (isDatabaseUnavailable(error)) {
-          revokeDemoRefreshToken(refreshToken);
-        } else {
-          return next(error);
+          return res
+            .status(503)
+            .json({ error: "El servicio de autenticación no está disponible. Intenta nuevamente más tarde." });
         }
+        return next(error);
       }
     }
-    res.json({ ok: true });
+    return res.json({ ok: true });
   }
 );
 

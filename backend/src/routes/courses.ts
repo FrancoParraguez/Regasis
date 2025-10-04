@@ -1,14 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { requireRole } from "../middleware/auth.js";
-import {
-  listDemoCourses,
-  listAllDemoCourses,
-  createDemoCourse,
-  deleteDemoCourse
-} from "../services/demo-data.js";
 import { isDatabaseUnavailable } from "../utils/database.js";
-import type { GradeType } from "../types/grades.js";
-import type { CourseStatus } from "../types/courses.js";
 import {
   listCourses,
   createCourse as createCourseRecord,
@@ -26,19 +18,15 @@ router.get(
       const courses = await listCourses();
       return res.json(courses);
     } catch (error) {
-      if (!isDatabaseUnavailable(error)) return next(error);
-      return res.json(listAllDemoCourses());
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "La base de datos no está disponible. Intenta nuevamente más tarde." });
+      }
+      return next(error);
     }
   }
 );
-
-interface EvaluationSchemeInput {
-  label: string;
-  gradeType: GradeType;
-  weight: number;
-  minScore?: number;
-  maxScore?: number;
-}
 
 interface CourseBody {
   code: string;
@@ -47,47 +35,13 @@ interface CourseBody {
   endDate: string;
   providerId: string;
   instructorIds?: string[];
-  description?: string;
-  location?: string;
-  modality?: string;
-  status?: CourseStatus;
-  evaluationSchemes?: EvaluationSchemeInput[];
 }
 
 router.post(
   "/",
   requireRole("ADMIN"),
   async (req: Request<unknown, unknown, CourseBody>, res: Response, next: NextFunction) => {
-    const {
-      code,
-      name,
-      startDate,
-      endDate,
-      providerId,
-      instructorIds,
-      description,
-      location,
-      modality,
-      status,
-      evaluationSchemes
-    } = req.body;
-
-    const trimmedDescription = description?.trim();
-    const trimmedLocation = location?.trim();
-    const trimmedModality = modality?.trim();
-    const courseStatuses: CourseStatus[] = ["DRAFT", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
-    const validStatus = status && courseStatuses.includes(status) ? status : undefined;
-    const parsedEvaluationSchemes = (evaluationSchemes ?? [])
-      .filter((scheme): scheme is EvaluationSchemeInput =>
-        Boolean(scheme?.label) && typeof scheme.weight === "number"
-      )
-      .map((scheme) => ({
-        label: scheme.label.trim(),
-        gradeType: scheme.gradeType,
-        weight: scheme.weight,
-        minScore: scheme.minScore ?? 0,
-        maxScore: scheme.maxScore ?? 20
-      }));
+    const { code, name, startDate, endDate, providerId, instructorIds } = req.body;
 
     try {
       const course = await createCourseRecord({
@@ -96,12 +50,7 @@ router.post(
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         providerId,
-        description: trimmedDescription,
-        location: trimmedLocation,
-        modality: trimmedModality,
-        status: validStatus,
-        instructorIds,
-        evaluationSchemes: parsedEvaluationSchemes
+        instructorIds
       });
       return res.status(201).json(course);
     } catch (error) {
@@ -115,38 +64,13 @@ router.post(
         return res.status(400).json({ error: "El código del curso ya está registrado." });
       }
 
-      if (!isDatabaseUnavailable(error)) return next(error);
-
-      try {
-        const course = createDemoCourse({
-          code,
-          name,
-          startDate,
-          endDate,
-          providerId,
-          instructorIds,
-          description: trimmedDescription,
-          location: trimmedLocation,
-          modality: trimmedModality,
-          status: validStatus,
-          evaluationSchemes: parsedEvaluationSchemes
-        });
-        return res.status(201).json(course);
-      } catch (creationError) {
-        if (
-          creationError instanceof Error &&
-          [
-            "Código requerido",
-            "Nombre requerido",
-            "Proveedor requerido",
-            "Fecha inválida",
-            "La fecha de término debe ser posterior al inicio"
-          ].includes(creationError.message)
-        ) {
-          return res.status(400).json({ error: creationError.message });
-        }
-        return next(creationError);
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "La base de datos no está disponible. Intenta nuevamente más tarde." });
       }
+
+      return next(error);
     }
   }
 );
@@ -163,13 +87,13 @@ router.delete(
       }
       return res.status(204).send();
     } catch (error) {
-      if (!isDatabaseUnavailable(error)) return next(error);
-
-      if (deleteDemoCourse(id)) {
-        return res.status(204).send();
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "La base de datos no está disponible. Intenta nuevamente más tarde." });
       }
 
-      return res.status(404).json({ error: "Curso no encontrado" });
+      return next(error);
     }
   }
 );
@@ -186,8 +110,12 @@ router.get(
       const courses = await listCoursesForUser(instructorId);
       return res.json(courses);
     } catch (error) {
-      if (!isDatabaseUnavailable(error)) return next(error);
-      return res.json(listDemoCourses(userId, user.role));
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "La base de datos no está disponible. Intenta nuevamente más tarde." });
+      }
+      return next(error);
     }
   }
 );

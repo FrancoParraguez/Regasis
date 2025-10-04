@@ -4,6 +4,7 @@ export interface DbSession {
   id: string;
   courseId: string;
   date: Date;
+  createdAt: Date;
 }
 
 export interface SessionWithCourse extends DbSession {
@@ -14,10 +15,6 @@ export interface SessionWithCourse extends DbSession {
     startDate: Date;
     endDate: Date;
     providerId: string;
-    status: string;
-    description: string | null;
-    location: string | null;
-    modality: string | null;
     createdAt: Date;
     updatedAt: Date;
   };
@@ -28,21 +25,18 @@ export async function listSessionsForInstructor(userId: string): Promise<Session
     session_id: string;
     session_courseId: string;
     session_date: Date;
+    session_createdAt: Date;
     course_id: string;
     course_code: string;
     course_name: string;
     course_startDate: Date;
     course_endDate: Date;
     course_providerId: string;
-    course_status: string;
-    course_description: string | null;
-    course_location: string | null;
-    course_modality: string | null;
     course_createdAt: Date;
     course_updatedAt: Date;
   }>(
-    'SELECT s."id" AS session_id, s."courseId" AS session_courseId, s."date" AS session_date, ' +
-      'c."id" AS course_id, c."code" AS course_code, c."name" AS course_name, c."startDate" AS course_startDate, c."endDate" AS course_endDate, c."providerId" AS course_providerId, c."status" AS course_status, c."description" AS course_description, c."location" AS course_location, c."modality" AS course_modality, c."createdAt" AS course_createdAt, c."updatedAt" AS course_updatedAt ' +
+    'SELECT s."id" AS session_id, s."courseId" AS session_courseId, s."date" AS session_date, s."createdAt" AS session_createdAt, ' +
+      'c."id" AS course_id, c."code" AS course_code, c."name" AS course_name, c."startDate" AS course_startDate, c."endDate" AS course_endDate, c."providerId" AS course_providerId, c."createdAt" AS course_createdAt, c."updatedAt" AS course_updatedAt ' +
       'FROM "Session" s JOIN "Course" c ON c."id" = s."courseId" ' +
       'WHERE EXISTS (SELECT 1 FROM "CourseInstructor" ci WHERE ci."courseId" = c."id" AND ci."userId" = $1)',
     [userId]
@@ -52,6 +46,7 @@ export async function listSessionsForInstructor(userId: string): Promise<Session
     id: row.session_id,
     courseId: row.session_courseId,
     date: row.session_date,
+    createdAt: row.session_createdAt,
     course: {
       id: row.course_id,
       code: row.course_code,
@@ -59,10 +54,6 @@ export async function listSessionsForInstructor(userId: string): Promise<Session
       startDate: row.course_startDate,
       endDate: row.course_endDate,
       providerId: row.course_providerId,
-      status: row.course_status,
-      description: row.course_description,
-      location: row.course_location,
-      modality: row.course_modality,
       createdAt: row.course_createdAt,
       updatedAt: row.course_updatedAt
     }
