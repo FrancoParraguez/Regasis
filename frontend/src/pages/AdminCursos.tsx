@@ -146,6 +146,27 @@ export default function AdminCursos() {
     [query, items]
   );
 
+  const totalInstructores = useMemo(() => {
+    const nombres = new Set<string>();
+    items.forEach((curso) => {
+      curso.instructores.forEach((nombre) => {
+        if (nombre) {
+          nombres.add(nombre);
+        }
+      });
+    });
+    return nombres.size;
+  }, [items]);
+
+  const promedioInstructores = useMemo(() => {
+    if (items.length === 0) return 0;
+    const total = items.reduce(
+      (suma, curso) => suma + curso.instructores.length,
+      0
+    );
+    return total / items.length;
+  }, [items]);
+
   const updateFormField = (field: keyof CursoFormState) => (
     event: ChangeEvent<HTMLInputElement | HTMLSelectElement>
   ) => {
@@ -442,9 +463,9 @@ export default function AdminCursos() {
             </Card>
             <Card className="p-4">
               <div className="text-sm text-gray-500">Instructores</div>
-              <div className="mt-1 text-2xl font-bold">3</div>
+              <div className="mt-1 text-2xl font-bold">{totalInstructores}</div>
               <div className="mt-2 text-xs text-gray-500">
-                Promedio 1.5 por curso
+                Promedio {items.length ? promedioInstructores.toFixed(1) : "—"} por curso
               </div>
             </Card>
             <Card className="p-4">

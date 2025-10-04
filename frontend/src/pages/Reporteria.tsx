@@ -49,14 +49,7 @@ export default function Reporteria() {
 
   const tableRows = useMemo(
     () =>
-      rows.length
-        ? rows.map((row) =>
-            columns.map((column) => String(row[column] ?? ""))
-          )
-        : [
-            ["CUR-001", "2025-10-03", "Ana Soto", "P (100%)"],
-            ["CUR-001", "2025-10-10", "Leandro Ruiz", "A (0%)"]
-          ],
+      rows.map((row) => columns.map((column) => String(row[column] ?? ""))),
     [columns, rows]
   );
 
@@ -167,6 +160,9 @@ export default function Reporteria() {
           <Card className="p-4">
             <p className="text-sm font-semibold">Vista previa</p>
             <Table columns={columns} rows={tableRows} />
+            {!rows.length && !loading ? (
+              <p className="mt-3 text-sm text-gray-500">Sin resultados.</p>
+            ) : null}
           </Card>
         </div>
         <div className="col-span-12 space-y-4 lg:col-span-4">
