@@ -157,13 +157,9 @@ router.post(
 
             if (before) updated += 1;
 
-            const role = typeof row.rol_en_curso === "string" ? row.rol_en_curso.trim() : undefined;
-
             await upsertEnrollment({
               participantId: participant.id,
-              courseId: course.id,
-              role: role || undefined,
-              importJobId: importJob.id
+              courseId: course.id
             });
 
             if (!before) created += 1;

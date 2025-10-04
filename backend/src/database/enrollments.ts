@@ -7,6 +7,11 @@ export interface DbEnrollment {
   createdAt: Date;
 }
 
+export interface UpsertEnrollmentInput {
+  participantId: string;
+  courseId: string;
+}
+
 export async function findEnrollment(participantId: string, courseId: string): Promise<DbEnrollment | null> {
   return queryOne<DbEnrollment>(
     'SELECT "id", "participantId", "courseId", "createdAt" FROM "Enrollment" WHERE "participantId" = $1 AND "courseId" = $2',
@@ -14,10 +19,7 @@ export async function findEnrollment(participantId: string, courseId: string): P
   );
 }
 
-export async function upsertEnrollment(data: {
-  participantId: string;
-  courseId: string;
-}): Promise<DbEnrollment> {
+export async function upsertEnrollment(data: UpsertEnrollmentInput): Promise<DbEnrollment> {
   const inserted = await queryOne<DbEnrollment>(
     'INSERT INTO "Enrollment" ("participantId", "courseId") VALUES ($1,$2) ' +
       'ON CONFLICT ("participantId", "courseId") DO NOTHING RETURNING "id", "participantId", "courseId", "createdAt"',
