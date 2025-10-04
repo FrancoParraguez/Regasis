@@ -64,13 +64,38 @@ router.post(
         return res.status(400).json({ error: "El código del curso ya está registrado." });
       }
 
-      if (isDatabaseUnavailable(error)) {
-        return res
-          .status(503)
-          .json({ error: "La base de datos no está disponible. Intenta nuevamente más tarde." });
-      }
+      if (!isDatabaseUnavailable(error)) return next(error);
 
-      return next(error);
+      try {
+        const course = createDemoCourse({
+          code,
+          name,
+          startDate,
+          endDate,
+          providerId,
+          instructorIds,
+          description: trimmedDescription,
+          location: trimmedLocation,
+          modality: trimmedModality,
+          status: validStatus,
+          evaluationSchemes: parsedEvaluationSchemes
+        });
+        return res.status(201).json(course);
+      } catch (creationError) {
+        if (
+          creationError instanceof Error &&
+          [
+            "Código requerido",
+            "Nombre requerido",
+            "Proveedor requerido",
+            "Fecha inválida",
+            "La fecha de término debe ser posterior al inicio"
+          ].includes(creationError.message)
+        ) {
+          return res.status(400).json({ error: creationError.message });
+        }
+        return next(creationError);
+      }
     }
   }
 );
