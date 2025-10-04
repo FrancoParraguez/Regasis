@@ -1,8 +1,9 @@
-import { Router, type Request, type Response } from "express";
-import { PrismaClient, type AttendanceState } from "@prisma/client";
+import { Router, type Request, type Response, type NextFunction } from "express";
 import { requireRole } from "../middleware/auth.js";
+import type { AttendanceState } from "../types/attendance.js";
+import { findAttendanceBySession, upsertAttendance } from "../database/attendance.js";
+import { isDatabaseUnavailable } from "../utils/database.js";
 
-const prisma = new PrismaClient();
 const router = Router();
 
 type AttendanceParams = { sessionId: string };
@@ -21,47 +22,47 @@ interface AttendancePayload {
 router.get(
   "/session/:sessionId",
   requireRole("INSTRUCTOR", "ADMIN"),
-  async (req: Request<AttendanceParams>, res: Response) => {
-    const data = await prisma.attendance.findMany({
-      where: { sessionId: req.params.sessionId },
-      include: { enrollment: { include: { participant: true, course: true } } }
-    });
-
-    return res.json(data);
+  async (req: Request<AttendanceParams>, res: Response, next: NextFunction) => {
+    try {
+      const data = await findAttendanceBySession(req.params.sessionId);
+      return res.json(data);
+    } catch (error) {
+      if (isDatabaseUnavailable(error)) {
+        return res.status(503).json({ error: "No se pudo obtener la asistencia" });
+      }
+      return next(error);
+    }
   }
 );
 
 router.post(
   "/session/:sessionId",
   requireRole("INSTRUCTOR", "ADMIN"),
-  async (req: Request<AttendanceParams, unknown, AttendancePayload>, res: Response) => {
+  async (req: Request<AttendanceParams, unknown, AttendancePayload>, res: Response, next: NextFunction) => {
     const userId = req.user!.id;
     const sessionId = req.params.sessionId;
     const items = req.body?.items ?? [];
 
-    const updates = await Promise.all(
-      items.map((item) =>
-        prisma.attendance.upsert({
-          where: { sessionId_enrollmentId: { sessionId, enrollmentId: item.enrollmentId } },
-          update: {
-            state: item.state,
-            observation: item.observation,
-            justification: item.justification,
-            updatedById: userId
-          },
-          create: {
+    try {
+      await Promise.all(
+        items.map((item) =>
+          upsertAttendance({
             sessionId,
             enrollmentId: item.enrollmentId,
             state: item.state,
             observation: item.observation,
             justification: item.justification,
             updatedById: userId
-          }
-        })
-      )
-    );
-
-    return res.json({ updated: updates.length });
+          })
+        )
+      );
+      return res.json({ updated: items.length });
+    } catch (error) {
+      if (isDatabaseUnavailable(error)) {
+        return res.status(503).json({ error: "No se pudo registrar la asistencia" });
+      }
+      return next(error);
+    }
   }
 );
 
