@@ -40,9 +40,9 @@ export async function listCourses(): Promise<CourseFull[]> {
     provider_createdAt: Date;
     provider_updatedAt: Date;
   }>(
-    'SELECT c."id", c."code", c."name", c."startDate", c."endDate", c."providerId", c."createdAt", c."updatedAt", ' +
-      'p."id" AS provider_id, p."name" AS provider_name, p."createdAt" AS provider_createdAt, p."updatedAt" AS provider_updatedAt ' +
-      'FROM "Course" c JOIN "Provider" p ON p."id" = c."providerId"'
+    'SELECT c.id, c.code, c.name, c.start_date AS "startDate", c.end_date AS "endDate", c.provider_id AS "providerId", c.created_at AS "createdAt", c.updated_at AS "updatedAt", ' +
+      'p.id AS provider_id, p.name AS provider_name, p.created_at AS "provider_createdAt", p.updated_at AS "provider_updatedAt" ' +
+      'FROM course c JOIN provider p ON p.id = c.provider_id'
   );
 
   if (courses.length === 0) return [];
@@ -58,8 +58,8 @@ export async function listCourses(): Promise<CourseFull[]> {
     user_role: string;
     user_providerId: string | null;
   }>(
-    'SELECT ci."id", ci."courseId", ci."userId", u."id" AS user_id, u."email" AS user_email, u."name" AS user_name, u."role" AS user_role, u."providerId" AS user_providerId ' +
-      'FROM "CourseInstructor" ci JOIN "User" u ON u."id" = ci."userId" WHERE ci."courseId" = ANY($1)',
+    'SELECT ci.id, ci.course_id AS "courseId", ci.user_id AS "userId", u.id AS user_id, u.email AS user_email, u.name AS user_name, u.role AS user_role, u.provider_id AS "user_providerId" ' +
+      'FROM course_instructor ci JOIN app_user u ON u.id = ci.user_id WHERE ci.course_id = ANY($1)',
     [courseIds]
   );
 
@@ -107,7 +107,7 @@ export interface CreateCourseInput {
 export async function createCourse(input: CreateCourseInput): Promise<CourseFull> {
   return withTransaction(async (client) => {
     const courseRow = await queryOne<DbCourse>(
-      'INSERT INTO "Course" ("code", "name", "startDate", "endDate", "providerId") VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      'INSERT INTO course (code, name, start_date, end_date, provider_id) VALUES ($1,$2,$3,$4,$5) RETURNING id, code, name, start_date AS "startDate", end_date AS "endDate", provider_id AS "providerId", created_at AS "createdAt", updated_at AS "updatedAt"',
       [input.code, input.name, input.startDate, input.endDate, input.providerId],
       client
     );
@@ -119,7 +119,7 @@ export async function createCourse(input: CreateCourseInput): Promise<CourseFull
       await Promise.all(
         instructorIds.map((userId) =>
           query(
-            'INSERT INTO "CourseInstructor" ("courseId", "userId") VALUES ($1, $2) ON CONFLICT ("courseId", "userId") DO NOTHING',
+            'INSERT INTO course_instructor (course_id, user_id) VALUES ($1, $2) ON CONFLICT (course_id, user_id) DO NOTHING',
             [courseRow.id, userId],
             client
           )
@@ -128,7 +128,7 @@ export async function createCourse(input: CreateCourseInput): Promise<CourseFull
     }
 
     const [provider] = await query<DbProvider>(
-      'SELECT "id", "name", "createdAt", "updatedAt" FROM "Provider" WHERE "id" = $1',
+      'SELECT id, name, created_at AS "createdAt", updated_at AS "updatedAt" FROM provider WHERE id = $1',
       [courseRow.providerId],
       client
     );
@@ -143,8 +143,8 @@ export async function createCourse(input: CreateCourseInput): Promise<CourseFull
       user_role: string;
       user_providerId: string | null;
     }>(
-      'SELECT ci."id", ci."courseId", ci."userId", u."id" AS user_id, u."email" AS user_email, u."name" AS user_name, u."role" AS user_role, u."providerId" AS user_providerId ' +
-        'FROM "CourseInstructor" ci JOIN "User" u ON u."id" = ci."userId" WHERE ci."courseId" = $1',
+      'SELECT ci.id, ci.course_id AS "courseId", ci.user_id AS "userId", u.id AS user_id, u.email AS user_email, u.name AS user_name, u.role AS user_role, u.provider_id AS "user_providerId" ' +
+        'FROM course_instructor ci JOIN app_user u ON u.id = ci.user_id WHERE ci.course_id = $1',
       [courseRow.id],
       client
     );
@@ -169,21 +169,26 @@ export async function createCourse(input: CreateCourseInput): Promise<CourseFull
 }
 
 export async function deleteCourse(id: string): Promise<boolean> {
-  const row = await queryOne<{ id: string }>('DELETE FROM "Course" WHERE "id" = $1 RETURNING "id"', [id]);
+  const row = await queryOne<{ id: string }>('DELETE FROM course WHERE id = $1 RETURNING id', [id]);
   return Boolean(row);
 }
 
 export async function listCoursesForUser(userId?: string): Promise<DbCourse[]> {
   if (!userId) {
-    return query<DbCourse>('SELECT * FROM "Course"');
+    return query<DbCourse>(
+      'SELECT id, code, name, start_date AS "startDate", end_date AS "endDate", provider_id AS "providerId", created_at AS "createdAt", updated_at AS "updatedAt" FROM course'
+    );
   }
 
   return query<DbCourse>(
-    'SELECT c.* FROM "Course" c WHERE EXISTS (SELECT 1 FROM "CourseInstructor" ci WHERE ci."courseId" = c."id" AND ci."userId" = $1)',
+    'SELECT c.id, c.code, c.name, c.start_date AS "startDate", c.end_date AS "endDate", c.provider_id AS "providerId", c.created_at AS "createdAt", c.updated_at AS "updatedAt" FROM course c WHERE EXISTS (SELECT 1 FROM course_instructor ci WHERE ci.course_id = c.id AND ci.user_id = $1)',
     [userId]
   );
 }
 
 export async function findCourseByCode(code: string): Promise<DbCourse | null> {
-  return queryOne<DbCourse>('SELECT * FROM "Course" WHERE "code" = $1', [code]);
+  return queryOne<DbCourse>(
+    'SELECT id, code, name, start_date AS "startDate", end_date AS "endDate", provider_id AS "providerId", created_at AS "createdAt", updated_at AS "updatedAt" FROM course WHERE code = $1',
+    [code]
+  );
 }

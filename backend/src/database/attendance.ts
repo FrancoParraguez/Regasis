@@ -72,15 +72,15 @@ export async function findAttendanceBySession(sessionId: string): Promise<DbAtte
     course_createdAt: Date;
     course_updatedAt: Date;
   }>(
-    'SELECT a."id" AS attendance_id, a."sessionId" AS attendance_sessionId, a."enrollmentId" AS attendance_enrollmentId, a."state" AS attendance_state, a."observation" AS attendance_observation, a."updatedById" AS attendance_updatedById, a."updatedAt" AS attendance_updatedAt, a."createdAt" AS attendance_createdAt, ' +
-      'e."id" AS enrollment_id, e."participantId" AS enrollment_participantId, e."courseId" AS enrollment_courseId, e."createdAt" AS enrollment_createdAt, ' +
-      'p."id" AS participant_id, p."email" AS participant_email, p."name" AS participant_name, p."providerId" AS participant_providerId, p."createdAt" AS participant_createdAt, p."updatedAt" AS participant_updatedAt, ' +
-      'c."id" AS course_id, c."code" AS course_code, c."name" AS course_name, c."startDate" AS course_startDate, c."endDate" AS course_endDate, c."providerId" AS course_providerId, c."createdAt" AS course_createdAt, c."updatedAt" AS course_updatedAt ' +
-      'FROM "Attendance" a ' +
-      'JOIN "Enrollment" e ON e."id" = a."enrollmentId" ' +
-      'JOIN "Participant" p ON p."id" = e."participantId" ' +
-      'JOIN "Course" c ON c."id" = e."courseId" ' +
-      'WHERE a."sessionId" = $1',
+    'SELECT a.id AS attendance_id, a.session_id AS "attendance_sessionId", a.enrollment_id AS "attendance_enrollmentId", a.state AS attendance_state, a.observation AS attendance_observation, a.updated_by_id AS "attendance_updatedById", a.updated_at AS "attendance_updatedAt", a.created_at AS "attendance_createdAt", ' +
+      'e.id AS enrollment_id, e.participant_id AS "enrollment_participantId", e.course_id AS "enrollment_courseId", e.created_at AS "enrollment_createdAt", ' +
+      'p.id AS participant_id, p.email AS participant_email, p.name AS participant_name, p.provider_id AS "participant_providerId", p.created_at AS "participant_createdAt", p.updated_at AS "participant_updatedAt", ' +
+      'c.id AS course_id, c.code AS course_code, c.name AS course_name, c.start_date AS "course_startDate", c.end_date AS "course_endDate", c.provider_id AS "course_providerId", c.created_at AS "course_createdAt", c.updated_at AS "course_updatedAt" ' +
+      'FROM attendance a ' +
+      'JOIN enrollment e ON e.id = a.enrollment_id ' +
+      'JOIN participant p ON p.id = e.participant_id ' +
+      'JOIN course c ON c.id = e.course_id ' +
+      'WHERE a.session_id = $1',
     [sessionId]
   );
 
@@ -133,8 +133,8 @@ export async function upsertAttendance(
   client?: DatabaseClient
 ): Promise<DbAttendance> {
   const update = await queryOne<DbAttendance>(
-    'UPDATE "Attendance" SET "state" = $3, "observation" = $4, "updatedById" = $5, "updatedAt" = CURRENT_TIMESTAMP ' +
-      'WHERE "sessionId" = $1 AND "enrollmentId" = $2 RETURNING *',
+    'UPDATE attendance SET state = $3, observation = $4, updated_by_id = $5, updated_at = CURRENT_TIMESTAMP ' +
+      'WHERE session_id = $1 AND enrollment_id = $2 RETURNING id, session_id AS "sessionId", enrollment_id AS "enrollmentId", state, observation, updated_by_id AS "updatedById", updated_at AS "updatedAt", created_at AS "createdAt"',
     [
       data.sessionId,
       data.enrollmentId,
@@ -148,7 +148,7 @@ export async function upsertAttendance(
   if (update) return update;
 
   const insert = await queryOne<DbAttendance>(
-    'INSERT INTO "Attendance" ("sessionId", "enrollmentId", "state", "observation", "updatedById") VALUES ($1, $2, $3, $4, $5) RETURNING *',
+    'INSERT INTO attendance (session_id, enrollment_id, state, observation, updated_by_id) VALUES ($1, $2, $3, $4, $5) RETURNING id, session_id AS "sessionId", enrollment_id AS "enrollmentId", state, observation, updated_by_id AS "updatedById", updated_at AS "updatedAt", created_at AS "createdAt"',
     [
       data.sessionId,
       data.enrollmentId,

@@ -35,10 +35,10 @@ export async function listSessionsForInstructor(userId: string): Promise<Session
     course_createdAt: Date;
     course_updatedAt: Date;
   }>(
-    'SELECT s."id" AS session_id, s."courseId" AS session_courseId, s."date" AS session_date, s."createdAt" AS session_createdAt, ' +
-      'c."id" AS course_id, c."code" AS course_code, c."name" AS course_name, c."startDate" AS course_startDate, c."endDate" AS course_endDate, c."providerId" AS course_providerId, c."createdAt" AS course_createdAt, c."updatedAt" AS course_updatedAt ' +
-      'FROM "Session" s JOIN "Course" c ON c."id" = s."courseId" ' +
-      'WHERE EXISTS (SELECT 1 FROM "CourseInstructor" ci WHERE ci."courseId" = c."id" AND ci."userId" = $1)',
+    'SELECT s.id AS session_id, s.course_id AS "session_courseId", s.date AS session_date, s.created_at AS "session_createdAt", ' +
+      'c.id AS course_id, c.code AS course_code, c.name AS course_name, c.start_date AS "course_startDate", c.end_date AS "course_endDate", c.provider_id AS "course_providerId", c.created_at AS "course_createdAt", c.updated_at AS "course_updatedAt" ' +
+      'FROM session s JOIN course c ON c.id = s.course_id ' +
+      'WHERE EXISTS (SELECT 1 FROM course_instructor ci WHERE ci.course_id = c.id AND ci.user_id = $1)',
     [userId]
   );
 
@@ -62,7 +62,7 @@ export async function listSessionsForInstructor(userId: string): Promise<Session
 
 export async function createSession(data: { courseId: string; date: Date }): Promise<DbSession> {
   const row = await queryOne<DbSession>(
-    'INSERT INTO "Session" ("courseId", "date") VALUES ($1, $2) RETURNING *',
+    'INSERT INTO session (course_id, date) VALUES ($1, $2) RETURNING id, course_id AS "courseId", date, created_at AS "createdAt"',
     [data.courseId, data.date]
   );
 
