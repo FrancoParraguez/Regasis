@@ -28,7 +28,7 @@ export async function insertAuditLog(data: {
   metadata?: Record<string, unknown> | null;
 }): Promise<void> {
   await query(
-    'INSERT INTO "AuditLog" ("userId", "action", "method", "path", "status", "ip", "metadata") VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    'INSERT INTO audit_log (user_id, action, method, path, status, ip, metadata) VALUES ($1,$2,$3,$4,$5,$6,$7)',
     [
       data.userId ?? null,
       data.action,
@@ -57,8 +57,8 @@ export async function listAuditLogs(limit = 200): Promise<AuditLogRow[]> {
     user_name: string | null;
     user_role: string | null;
   }>(
-    'SELECT a."id", a."userId", a."action", a."method", a."path", a."status", a."ip", a."metadata", a."createdAt", u."id" AS user_id, u."email" AS user_email, u."name" AS user_name, u."role" AS user_role ' +
-      'FROM "AuditLog" a LEFT JOIN "User" u ON u."id" = a."userId" ORDER BY a."createdAt" DESC LIMIT $1',
+    'SELECT a.id, a.user_id AS "userId", a.action, a.method, a.path, a.status, a.ip, a.metadata, a.created_at AS "createdAt", u.id AS user_id, u.email AS user_email, u.name AS user_name, u.role AS user_role ' +
+      'FROM audit_log a LEFT JOIN app_user u ON u.id = a.user_id ORDER BY a.created_at DESC LIMIT $1',
     [limit]
   );
 

@@ -25,7 +25,7 @@ export interface RefreshTokenWithUser extends DbRefreshToken {
 
 export async function findUserByEmail(email: string): Promise<DbUser | null> {
   return queryOne<DbUser>(
-    'SELECT "id", "email", "name", "password", "role", "providerId" FROM "User" WHERE "email" = $1',
+    'SELECT id, email, name, password, role, provider_id AS "providerId" FROM app_user WHERE email = $1',
     [email]
   );
 }
@@ -39,9 +39,9 @@ export async function findRefreshTokenWithUser(jti: string): Promise<RefreshToke
     user_providerId: string | null;
     user_password: string;
   }>(
-    'SELECT rt."id", rt."jti", rt."userId", rt."expiresAt", rt."revoked", rt."createdAt", ' +
-      'u."id" AS user_id, u."email" AS user_email, u."name" AS user_name, u."role" AS user_role, u."providerId" AS user_providerId, u."password" AS user_password ' +
-      'FROM "RefreshToken" rt JOIN "User" u ON u."id" = rt."userId" WHERE rt."jti" = $1',
+    'SELECT rt.id, rt.jti, rt.user_id AS "userId", rt.expires_at AS "expiresAt", rt.revoked, rt.created_at AS "createdAt", ' +
+      'u.id AS user_id, u.email AS user_email, u.name AS user_name, u.role AS user_role, u.provider_id AS "user_providerId", u.password AS user_password ' +
+      'FROM refresh_token rt JOIN app_user u ON u.id = rt.user_id WHERE rt.jti = $1',
     [jti]
   );
 
@@ -68,7 +68,7 @@ export async function createRefreshToken(data: {
   expiresAt: Date;
 }): Promise<DbRefreshToken> {
   const row = await queryOne<DbRefreshToken>(
-    'INSERT INTO "RefreshToken" ("jti", "userId", "expiresAt") VALUES ($1, $2, $3) RETURNING "id", "jti", "userId", "expiresAt", "revoked", "createdAt"',
+    'INSERT INTO refresh_token (jti, user_id, expires_at) VALUES ($1, $2, $3) RETURNING id, jti, user_id AS "userId", expires_at AS "expiresAt", revoked, created_at AS "createdAt"',
     [data.jti, data.userId, data.expiresAt]
   );
 
@@ -80,5 +80,5 @@ export async function createRefreshToken(data: {
 }
 
 export async function revokeRefreshToken(jti: string): Promise<void> {
-  await query('UPDATE "RefreshToken" SET "revoked" = true WHERE "jti" = $1', [jti]);
+  await query('UPDATE refresh_token SET revoked = true WHERE jti = $1', [jti]);
 }
