@@ -12,7 +12,6 @@ interface AttendancePayloadItem {
   enrollmentId: string;
   state: AttendanceState;
   observation?: string;
-  justification?: string;
 }
 
 interface AttendancePayload {
@@ -51,7 +50,6 @@ router.post(
             enrollmentId: item.enrollmentId,
             state: item.state,
             observation: item.observation,
-            justification: item.justification,
             updatedById: userId
           })
         )

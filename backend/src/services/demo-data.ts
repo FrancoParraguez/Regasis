@@ -18,15 +18,6 @@ interface DemoUser {
   isActive?: boolean;
 }
 
-interface DemoEvaluationScheme {
-  id: string;
-  label: string;
-  gradeType: string;
-  weight: number;
-  minScore: number;
-  maxScore: number;
-}
-
 interface DemoCourse {
   id: string;
   code: string;
@@ -37,17 +28,13 @@ interface DemoCourse {
   instructorIds: string[];
   createdAt: string;
   updatedAt: string;
-  status: string;
-  description?: string;
-  location?: string;
-  modality?: string;
-  evaluationSchemes: DemoEvaluationScheme[];
 }
 
 interface DemoSession {
   id: string;
   courseId: string;
   date: string;
+  createdAt: string;
 }
 
 interface DemoProvider {
@@ -165,29 +152,7 @@ const courses: DemoCourse[] = [
     providerId,
     instructorIds: ["demo-instructor"],
     createdAt: new Date("2025-10-01T12:00:00Z").toISOString(),
-    updatedAt: new Date("2025-10-01T12:00:00Z").toISOString(),
-    status: "IN_PROGRESS",
-    description: "Curso introductorio a la seguridad industrial",
-    location: "Sala 1",
-    modality: "Presencial",
-    evaluationSchemes: [
-      {
-        id: "demo-esquema-1",
-        label: "Examen Final",
-        gradeType: "EXAMEN",
-        weight: 0.6,
-        minScore: 0,
-        maxScore: 20
-      },
-      {
-        id: "demo-esquema-2",
-        label: "Prácticas",
-        gradeType: "PRACTICA",
-        weight: 0.4,
-        minScore: 0,
-        maxScore: 20
-      }
-    ]
+    updatedAt: new Date("2025-10-01T12:00:00Z").toISOString()
   }
 ];
 
@@ -195,7 +160,8 @@ const sessions: DemoSession[] = [
   {
     id: "demo-session-1",
     courseId: "demo-course-1",
-    date: new Date("2025-10-03").toISOString()
+    date: new Date("2025-10-03").toISOString(),
+    createdAt: new Date("2025-10-01T12:00:00Z").toISOString()
   }
 ];
 
@@ -223,11 +189,7 @@ export function listDemoCourses(userId: string, role: Role) {
     endDate: new Date(course.endDate),
     createdAt: new Date(course.createdAt),
     updatedAt: new Date(course.updatedAt),
-    providerId: course.providerId,
-    status: course.status,
-    description: course.description,
-    location: course.location,
-    modality: course.modality
+    providerId: course.providerId
   }));
 }
 
@@ -244,10 +206,6 @@ export function listAllDemoCourses() {
       providerId: course.providerId,
       createdAt: new Date(course.createdAt),
       updatedAt: new Date(course.updatedAt),
-      status: course.status,
-      description: course.description,
-      location: course.location,
-      modality: course.modality,
       provider: {
         ...provider,
         createdAt: new Date(provider.createdAt),
@@ -275,17 +233,7 @@ export function listAllDemoCourses() {
               }
             : null
         };
-      }),
-      evaluationSchemes: course.evaluationSchemes.map((scheme) => ({
-        id: scheme.id,
-        label: scheme.label,
-        gradeType: scheme.gradeType,
-        weight: scheme.weight,
-        minScore: scheme.minScore,
-        maxScore: scheme.maxScore,
-        createdAt: new Date(course.createdAt),
-        updatedAt: new Date(course.updatedAt)
-      }))
+      })
     };
   });
 }
@@ -304,6 +252,7 @@ export function listDemoSessions(userId: string) {
         id: session.id,
         courseId: session.courseId,
         date: new Date(session.date),
+        createdAt: new Date(session.createdAt),
         course: {
           id: course.id,
           code: course.code,
@@ -333,17 +282,6 @@ export function createDemoCourse(input: {
   endDate: Date | string;
   providerId: string;
   instructorIds?: string[];
-  description?: string;
-  location?: string;
-  modality?: string;
-  status?: string;
-  evaluationSchemes?: {
-    label: string;
-    gradeType: string;
-    weight: number;
-    minScore?: number;
-    maxScore?: number;
-  }[];
 }) {
   const code = input.code?.trim();
   const name = input.name?.trim();
@@ -371,21 +309,6 @@ export function createDemoCourse(input: {
     throw new Error("La fecha de término debe ser posterior al inicio");
   }
 
-  const status = input.status?.trim() || "DRAFT";
-  const description = input.description?.trim();
-  const location = input.location?.trim();
-  const modality = input.modality?.trim();
-  const evaluationSchemes = (input.evaluationSchemes ?? [])
-    .filter((scheme) => Boolean(scheme?.label) && typeof scheme?.weight === "number")
-    .map((scheme) => ({
-      id: randomUUID(),
-      label: scheme.label.trim(),
-      gradeType: scheme.gradeType,
-      weight: scheme.weight,
-      minScore: scheme.minScore ?? 0,
-      maxScore: scheme.maxScore ?? 20
-    }));
-
   const course: DemoCourse = {
     id: randomUUID(),
     code,
@@ -395,12 +318,7 @@ export function createDemoCourse(input: {
     providerId,
     instructorIds: [...(input.instructorIds ?? [])],
     createdAt: now.toISOString(),
-    updatedAt: now.toISOString(),
-    status,
-    description,
-    location,
-    modality,
-    evaluationSchemes
+    updatedAt: now.toISOString()
   };
 
   courses.push(course);
@@ -413,12 +331,7 @@ export function createDemoCourse(input: {
     endDate,
     providerId: course.providerId,
     createdAt: new Date(course.createdAt),
-    updatedAt: new Date(course.updatedAt),
-    status: course.status,
-    description: course.description,
-    location: course.location,
-    modality: course.modality,
-    evaluationSchemes: course.evaluationSchemes.map((scheme) => ({ ...scheme }))
+    updatedAt: new Date(course.updatedAt)
   };
 }
 
@@ -449,7 +362,8 @@ export function createDemoSession(input: { courseId: string; date: Date | string
   const session: DemoSession = {
     id: randomUUID(),
     courseId: course.id,
-    date: date.toISOString()
+    date: date.toISOString(),
+    createdAt: new Date().toISOString()
   };
 
   sessions.push(session);
@@ -457,7 +371,8 @@ export function createDemoSession(input: { courseId: string; date: Date | string
   return {
     id: session.id,
     courseId: session.courseId,
-    date
+    date,
+    createdAt: new Date(session.createdAt)
   };
 }
 

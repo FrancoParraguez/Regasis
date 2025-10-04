@@ -13,8 +13,6 @@ interface CreateGradePayload {
   type: GradeType;
   score: number;
   date?: string;
-  evaluationSchemeId?: string;
-  observation?: string;
 }
 
 router.get(
@@ -37,15 +35,13 @@ router.post(
   "/",
   requireRole("INSTRUCTOR", "ADMIN"),
   async (req: Request<unknown, unknown, CreateGradePayload>, res: Response, next: NextFunction) => {
-    const { enrollmentId, type, score, date, evaluationSchemeId, observation } = req.body;
+    const { enrollmentId, type, score, date } = req.body;
     try {
       const grade = await createGrade({
         enrollmentId,
         type,
         score,
-        date: date ? new Date(date) : undefined,
-        evaluationSchemeId,
-        observation
+        date: date ? new Date(date) : undefined
       });
       return res.status(201).json(grade);
     } catch (error) {

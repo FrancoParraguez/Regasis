@@ -8,12 +8,10 @@ import {
   CircleUser,
   FileSpreadsheet,
   Shield,
-  Upload,
 } from "lucide-react";
 
 import AdminAuditoria from "../pages/AdminAuditoria";
 import AdminCursos from "../pages/AdminCursos";
-import AdminImportaciones from "../pages/AdminImportaciones";
 import InstructorAsistencia from "../pages/InstructorAsistencia";
 import InstructorNotas from "../pages/InstructorNotas";
 import InstructorSesiones from "../pages/InstructorSesiones";
@@ -43,13 +41,6 @@ export const APP_ROUTES: AppRoute[] = [
     roles: ["ADMIN"],
     label: "Cursos",
     icon: BookOpen,
-  },
-  {
-    path: "/importaciones",
-    element: <AdminImportaciones />,
-    roles: ["ADMIN"],
-    label: "Importaciones",
-    icon: Upload,
   },
   {
     path: "/auditoria",
