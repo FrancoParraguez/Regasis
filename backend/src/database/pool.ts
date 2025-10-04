@@ -1,30 +1,30 @@
-import { Pool, PoolClient, QueryResult } from "pg";
+import { Pool, PoolClient, QueryResult, QueryResultRow } from "pg";
 import { env } from "../config/env.js";
 
 export const pool = new Pool({ connectionString: env.DATABASE_URL });
 
 export type DatabaseClient = PoolClient;
 
-export async function query<T>(
+export async function query<T extends QueryResultRow>(
   text: string,
   params: unknown[] = [],
   client?: DatabaseClient
 ): Promise<T[]> {
   if (client) {
-    const result: QueryResult<T> = await client.query(text, params);
+    const result: QueryResult<T> = await client.query<T>(text, params);
     return result.rows;
   }
 
   const connection = await pool.connect();
   try {
-    const result: QueryResult<T> = await connection.query(text, params);
+    const result: QueryResult<T> = await connection.query<T>(text, params);
     return result.rows;
   } finally {
     connection.release();
   }
 }
 
-export async function queryOne<T>(
+export async function queryOne<T extends QueryResultRow>(
   text: string,
   params: unknown[] = [],
   client?: DatabaseClient
