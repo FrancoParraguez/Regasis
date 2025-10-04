@@ -1,0 +1,153 @@
+-- =========================
+-- Limpieza de esquema
+-- =========================
+DROP SCHEMA IF EXISTS public CASCADE;
+CREATE SCHEMA public;
+SET search_path TO public;
+
+-- =========================
+-- ENUMS
+-- =========================
+CREATE TYPE "Role" AS ENUM ('ADMIN', 'INSTRUCTOR', 'REPORTER');
+CREATE TYPE "AttendanceState" AS ENUM ('PRESENTE', 'AUSENTE', 'JUSTIFICADO', 'TARDANZA', 'SALIDA_ANTICIPADA');
+CREATE TYPE "GradeType" AS ENUM ('P1', 'P2', 'EXAMEN', 'PRACTICA', 'OTRO');
+
+-- =========================
+-- Tablas principales
+-- =========================
+
+CREATE TABLE "Provider" (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL UNIQUE,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "User" (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    password TEXT NOT NULL, -- bcrypt hash
+    role "Role" NOT NULL,
+    providerId TEXT REFERENCES "Provider"(id) ON DELETE SET NULL,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "Participant" (
+    id TEXT PRIMARY KEY,
+    email TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    providerId TEXT REFERENCES "Provider"(id) ON DELETE CASCADE,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "Course" (
+    id TEXT PRIMARY KEY,
+    code TEXT NOT NULL UNIQUE,
+    name TEXT NOT NULL,
+    startDate TIMESTAMP NOT NULL,
+    endDate TIMESTAMP NOT NULL,
+    providerId TEXT NOT NULL REFERENCES "Provider"(id) ON DELETE CASCADE,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "CourseInstructor" (
+    id TEXT PRIMARY KEY,
+    courseId TEXT NOT NULL REFERENCES "Course"(id) ON DELETE CASCADE,
+    userId TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE
+);
+
+CREATE TABLE "Enrollment" (
+    id TEXT PRIMARY KEY,
+    participantId TEXT NOT NULL REFERENCES "Participant"(id) ON DELETE CASCADE,
+    courseId TEXT NOT NULL REFERENCES "Course"(id) ON DELETE CASCADE,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "Session" (
+    id TEXT PRIMARY KEY,
+    courseId TEXT NOT NULL REFERENCES "Course"(id) ON DELETE CASCADE,
+    date TIMESTAMP NOT NULL,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "Attendance" (
+    id TEXT PRIMARY KEY,
+    sessionId TEXT NOT NULL REFERENCES "Session"(id) ON DELETE CASCADE,
+    enrollmentId TEXT NOT NULL REFERENCES "Enrollment"(id) ON DELETE CASCADE,
+    state "AttendanceState" NOT NULL,
+    observation TEXT,
+    updatedById TEXT REFERENCES "User"(id) ON DELETE SET NULL,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "Grade" (
+    id TEXT PRIMARY KEY,
+    enrollmentId TEXT NOT NULL REFERENCES "Enrollment"(id) ON DELETE CASCADE,
+    type "GradeType" NOT NULL,
+    score DOUBLE PRECISION NOT NULL,
+    date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "RefreshToken" (
+    id TEXT PRIMARY KEY,
+    jti TEXT NOT NULL UNIQUE,
+    userId TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+    expiresAt TIMESTAMP NOT NULL,
+    revoked BOOLEAN NOT NULL DEFAULT FALSE,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "AuditLog" (
+    id TEXT PRIMARY KEY,
+    userId TEXT REFERENCES "User"(id) ON DELETE SET NULL,
+    action TEXT NOT NULL,
+    method TEXT NOT NULL,
+    path TEXT NOT NULL,
+    status INTEGER NOT NULL,
+    ip TEXT,
+    metadata JSONB,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================
+-- Seguridad: contraseñas
+-- =========================
+
+CREATE TABLE "PasswordHistory" (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+    password TEXT NOT NULL,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE "PasswordResetToken" (
+    id TEXT PRIMARY KEY,
+    userId TEXT NOT NULL REFERENCES "User"(id) ON DELETE CASCADE,
+    token TEXT NOT NULL UNIQUE,
+    expiresAt TIMESTAMP NOT NULL,
+    used BOOLEAN NOT NULL DEFAULT FALSE,
+    createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- =========================
+-- Índices
+-- =========================
+CREATE INDEX idx_user_email ON "User"(email);
+CREATE INDEX idx_participant_email ON "Participant"(email);
+CREATE INDEX idx_course_code ON "Course"(code);
+CREATE INDEX idx_enrollment_course ON "Enrollment"(courseId);
+CREATE INDEX idx_enrollment_participant ON "Enrollment"(participantId);
+CREATE INDEX idx_attendance_session ON "Attendance"(sessionId);
+CREATE INDEX idx_attendance_enrollment ON "Attendance"(enrollmentId);
+CREATE INDEX idx_grade_enrollment ON "Grade"(enrollmentId);
+CREATE INDEX idx_auditlog_user ON "AuditLog"(userId);
+CREATE INDEX idx_passwordhistory_user ON "PasswordHistory"(userId);
+CREATE INDEX idx_passwordresettoken_user ON "PasswordResetToken"(userId);
+CREATE INDEX idx_passwordresettoken_token ON "PasswordResetToken"(token);
