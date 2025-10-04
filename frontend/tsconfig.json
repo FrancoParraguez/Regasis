@@ -2,7 +2,8 @@
   "compilerOptions": {
     "target": "ES2020",
     "module": "ESNext",
-    "moduleResolution": "Node",
+    "moduleResolution": "Bundler",
+    "useDefineForClassFields": true,
     "strict": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true,
@@ -10,9 +11,10 @@
     "resolveJsonModule": true,
     "skipLibCheck": true,
     "jsx": "react-jsx",
-    "types": ["vite/client", "react", "react-dom"],
     "lib": ["DOM", "DOM.Iterable", "ES2020"],
-    "isolatedModules": true
+    "isolatedModules": true,
+    "noEmit": true,
+    "types": ["vite/client"]
   },
   "include": [
     "src",
