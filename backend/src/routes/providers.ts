@@ -1,7 +1,6 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
 import { requireRole } from "../middleware/auth.js";
 import { isDatabaseUnavailable } from "../utils/database.js";
-import { createDemoProvider, listDemoProviders } from "../services/demo-data.js";
 import { listProviders, createProvider } from "../database/providers.js";
 const router = Router();
 
@@ -13,8 +12,12 @@ router.get(
       const providers = await listProviders();
       return res.json(providers);
     } catch (error) {
-      if (!isDatabaseUnavailable(error)) return next(error);
-      return res.json(listDemoProviders());
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "La base de datos no está disponible. Intenta nuevamente más tarde." });
+      }
+      return next(error);
     }
   }
 );
@@ -45,17 +48,13 @@ router.post(
           .json({ error: "Ya existe un proveedor con ese nombre." });
       }
 
-      if (!isDatabaseUnavailable(error)) return next(error);
-
-      try {
-        const provider = createDemoProvider({ name });
-        return res.status(201).json(provider);
-      } catch (creationError) {
-        if (creationError instanceof Error) {
-          return res.status(400).json({ error: creationError.message });
-        }
-        return next(creationError);
+      if (isDatabaseUnavailable(error)) {
+        return res
+          .status(503)
+          .json({ error: "La base de datos no está disponible. Intenta nuevamente más tarde." });
       }
+
+      return next(error);
     }
   }
 );

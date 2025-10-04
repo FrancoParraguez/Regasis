@@ -1,4 +1,3 @@
-import type { CourseStatus } from "../types/courses.js";
 import { query, queryOne, withTransaction } from "./pool.js";
 import type { DbProvider } from "./providers.js";
 
@@ -9,10 +8,6 @@ export interface DbCourse {
   startDate: Date;
   endDate: Date;
   providerId: string;
-  status: CourseStatus;
-  description: string | null;
-  location: string | null;
-  modality: string | null;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -34,21 +29,8 @@ export interface CourseInstructorRow {
   };
 }
 
-export interface EvaluationSchemeRow {
-  id: string;
-  courseId: string;
-  label: string;
-  gradeType: string;
-  weight: number;
-  minScore: number;
-  maxScore: number;
-  createdAt: Date;
-  updatedAt: Date;
-}
-
 export interface CourseFull extends CourseWithProvider {
   instructors: CourseInstructorRow[];
-  evaluationSchemes: EvaluationSchemeRow[];
 }
 
 export async function listCourses(): Promise<CourseFull[]> {
@@ -58,7 +40,7 @@ export async function listCourses(): Promise<CourseFull[]> {
     provider_createdAt: Date;
     provider_updatedAt: Date;
   }>(
-    'SELECT c."id", c."code", c."name", c."startDate", c."endDate", c."providerId", c."status", c."description", c."location", c."modality", c."createdAt", c."updatedAt", ' +
+    'SELECT c."id", c."code", c."name", c."startDate", c."endDate", c."providerId", c."createdAt", c."updatedAt", ' +
       'p."id" AS provider_id, p."name" AS provider_name, p."createdAt" AS provider_createdAt, p."updatedAt" AS provider_updatedAt ' +
       'FROM "Course" c JOIN "Provider" p ON p."id" = c."providerId"'
   );
@@ -81,11 +63,6 @@ export async function listCourses(): Promise<CourseFull[]> {
     [courseIds]
   );
 
-  const evaluationSchemes = await query<EvaluationSchemeRow>(
-    'SELECT "id", "courseId", "label", "gradeType", "weight", "minScore", "maxScore", "createdAt", "updatedAt" FROM "EvaluationScheme" WHERE "courseId" = ANY($1)',
-    [courseIds]
-  );
-
   return courses.map((course) => ({
     id: course.id,
     code: course.code,
@@ -93,10 +70,6 @@ export async function listCourses(): Promise<CourseFull[]> {
     startDate: course.startDate,
     endDate: course.endDate,
     providerId: course.providerId,
-    status: course.status as CourseStatus,
-    description: course.description,
-    location: course.location,
-    modality: course.modality,
     createdAt: course.createdAt,
     updatedAt: course.updatedAt,
     provider: {
@@ -118,8 +91,7 @@ export async function listCourses(): Promise<CourseFull[]> {
           role: instructor.user_role,
           providerId: instructor.user_providerId
         }
-      })),
-    evaluationSchemes: evaluationSchemes.filter((scheme) => scheme.courseId === course.id)
+      }))
   }));
 }
 
@@ -129,35 +101,14 @@ export interface CreateCourseInput {
   startDate: Date;
   endDate: Date;
   providerId: string;
-  description?: string | null;
-  location?: string | null;
-  modality?: string | null;
-  status?: CourseStatus;
   instructorIds?: string[];
-  evaluationSchemes?: Array<{
-    label: string;
-    gradeType: string;
-    weight: number;
-    minScore: number;
-    maxScore: number;
-  }>;
 }
 
 export async function createCourse(input: CreateCourseInput): Promise<CourseFull> {
   return withTransaction(async (client) => {
     const courseRow = await queryOne<DbCourse>(
-      'INSERT INTO "Course" ("code", "name", "startDate", "endDate", "providerId", "description", "location", "modality", "status") VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING *',
-      [
-        input.code,
-        input.name,
-        input.startDate,
-        input.endDate,
-        input.providerId,
-        input.description ?? null,
-        input.location ?? null,
-        input.modality ?? null,
-        input.status ?? "DRAFT"
-      ],
+      'INSERT INTO "Course" ("code", "name", "startDate", "endDate", "providerId") VALUES ($1,$2,$3,$4,$5) RETURNING *',
+      [input.code, input.name, input.startDate, input.endDate, input.providerId],
       client
     );
 
@@ -170,26 +121,6 @@ export async function createCourse(input: CreateCourseInput): Promise<CourseFull
           query(
             'INSERT INTO "CourseInstructor" ("courseId", "userId") VALUES ($1, $2) ON CONFLICT ("courseId", "userId") DO NOTHING',
             [courseRow.id, userId],
-            client
-          )
-        )
-      );
-    }
-
-    const schemes = input.evaluationSchemes ?? [];
-    if (schemes.length > 0) {
-      await Promise.all(
-        schemes.map((scheme) =>
-          query(
-            'INSERT INTO "EvaluationScheme" ("courseId", "label", "gradeType", "weight", "minScore", "maxScore") VALUES ($1,$2,$3,$4,$5,$6)',
-            [
-              courseRow.id,
-              scheme.label,
-              scheme.gradeType,
-              scheme.weight,
-              scheme.minScore,
-              scheme.maxScore
-            ],
             client
           )
         )
@@ -218,15 +149,8 @@ export async function createCourse(input: CreateCourseInput): Promise<CourseFull
       client
     );
 
-    const evaluationSchemes = await query<EvaluationSchemeRow>(
-      'SELECT "id", "courseId", "label", "gradeType", "weight", "minScore", "maxScore", "createdAt", "updatedAt" FROM "EvaluationScheme" WHERE "courseId" = $1',
-      [courseRow.id],
-      client
-    );
-
     return {
       ...courseRow,
-      status: courseRow.status as CourseStatus,
       provider: provider!,
       instructors: instructorsForCourse.map((instructor) => ({
         id: instructor.id,
@@ -239,8 +163,7 @@ export async function createCourse(input: CreateCourseInput): Promise<CourseFull
           role: instructor.user_role,
           providerId: instructor.user_providerId
         }
-      })),
-      evaluationSchemes
+      }))
     };
   });
 }

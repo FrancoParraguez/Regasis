@@ -42,7 +42,6 @@ Reinsercion
 │  │  │  └─ sessions.ts
 │  │  ├─ server.ts
 │  │  ├─ services
-│  │  │  ├─ demo-data.ts
 │  │  │  └─ report.ts
 │  │  ├─ types
 │  │  │  ├─ attendance.ts
