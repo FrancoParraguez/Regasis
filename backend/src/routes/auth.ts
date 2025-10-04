@@ -1,5 +1,4 @@
 import { Router, type Request, type Response, type NextFunction } from "express";
-import { PrismaClient } from "@prisma/client";
 import { z } from "zod";
 import { comparePassword } from "../utils/crypto.js";
 import { env } from "../config/env.js";
@@ -13,11 +12,16 @@ import {
   revokeDemoRefreshToken,
   findDemoUserById
 } from "../services/demo-data.js";
-import { isPrismaUnavailable } from "../utils/prisma.js";
+import { isDatabaseUnavailable } from "../utils/database.js";
+import {
+  findUserByEmail,
+  createRefreshToken,
+  findRefreshTokenWithUser,
+  revokeRefreshToken
+} from "../database/auth.js";
 import type { AuthenticatedUser } from "../types/auth.js";
 import type { Role } from "../types/roles.js";
 
-const prisma = new PrismaClient();
 const router = Router();
 
 const loginSchema = z.object({
@@ -59,7 +63,7 @@ router.post(
 
     const { email, password } = parsed.data;
     try {
-      const user = await prisma.user.findUnique({ where: { email } });
+      const user = await findUserByEmail(email);
       if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
 
       const ok = await comparePassword(password, user.password);
@@ -71,7 +75,7 @@ router.post(
       );
       const jti = newJti();
       const expiresAt = addDuration(new Date(), env.REFRESH_EXPIRES);
-      await prisma.refreshToken.create({ data: { jti, userId: user.id, expiresAt } });
+      await createRefreshToken({ jti, userId: user.id, expiresAt });
 
       return res.json({
         token: accessToken,
@@ -85,7 +89,7 @@ router.post(
         })
       });
     } catch (error) {
-      if (!isPrismaUnavailable(error)) return next(error);
+      if (!isDatabaseUnavailable(error)) return next(error);
 
       const user = findDemoUserByEmail(email);
       if (!user) return res.status(401).json({ error: "Credenciales inválidas" });
@@ -130,22 +134,16 @@ router.post(
     }
     const { refreshToken } = parsed.data;
     try {
-      const rt = await prisma.refreshToken.findUnique({
-        where: { jti: refreshToken },
-        include: { user: true }
-      });
+      const rt = await findRefreshTokenWithUser(refreshToken);
       if (!rt || rt.revoked || rt.expiresAt < new Date()) {
         return res.status(401).json({ error: "refreshToken inválido" });
       }
 
-      await prisma.refreshToken.update({
-        where: { jti: refreshToken },
-        data: { revoked: true }
-      });
+      await revokeRefreshToken(refreshToken);
 
       const jti = newJti();
       const expiresAt = addDuration(new Date(), env.REFRESH_EXPIRES);
-      await prisma.refreshToken.create({ data: { jti, userId: rt.userId, expiresAt } });
+      await createRefreshToken({ jti, userId: rt.userId, expiresAt });
 
       const token = signAccessToken(
         { role: rt.user.role, providerId: rt.user.providerId },
@@ -153,7 +151,7 @@ router.post(
       );
       return res.json({ token, refreshToken: jti });
     } catch (error) {
-      if (!isPrismaUnavailable(error)) return next(error);
+      if (!isDatabaseUnavailable(error)) return next(error);
 
       const rt = findDemoRefreshToken(refreshToken);
       if (!rt || rt.revoked || rt.expiresAt < new Date()) {
@@ -182,12 +180,9 @@ router.post(
     const refreshToken = parsed.success ? parsed.data.refreshToken : undefined;
     if (refreshToken) {
       try {
-        await prisma.refreshToken.update({
-          where: { jti: refreshToken },
-          data: { revoked: true }
-        });
+        await revokeRefreshToken(refreshToken);
       } catch (error) {
-        if (isPrismaUnavailable(error)) {
+        if (isDatabaseUnavailable(error)) {
           revokeDemoRefreshToken(refreshToken);
         } else {
           return next(error);
