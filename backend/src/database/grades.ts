@@ -48,13 +48,13 @@ export async function listGradesByCourse(courseId: string): Promise<GradeWithRel
     participant_createdAt: Date;
     participant_updatedAt: Date;
   }>(
-    'SELECT g."id" AS grade_id, g."enrollmentId" AS grade_enrollmentId, g."type" AS grade_type, g."score" AS grade_score, g."date" AS grade_date, g."createdAt" AS grade_createdAt, g."updatedAt" AS grade_updatedAt, ' +
-      'e."id" AS enrollment_id, e."participantId" AS enrollment_participantId, e."courseId" AS enrollment_courseId, e."createdAt" AS enrollment_createdAt, ' +
-      'p."id" AS participant_id, p."email" AS participant_email, p."name" AS participant_name, p."providerId" AS participant_providerId, p."createdAt" AS participant_createdAt, p."updatedAt" AS participant_updatedAt ' +
-      'FROM "Grade" g ' +
-      'JOIN "Enrollment" e ON e."id" = g."enrollmentId" ' +
-      'JOIN "Participant" p ON p."id" = e."participantId" ' +
-      'WHERE e."courseId" = $1',
+    'SELECT g.id AS grade_id, g.enrollment_id AS "grade_enrollmentId", g.type AS grade_type, g.score AS grade_score, g.date AS grade_date, g.created_at AS "grade_createdAt", g.updated_at AS "grade_updatedAt", ' +
+      'e.id AS enrollment_id, e.participant_id AS "enrollment_participantId", e.course_id AS "enrollment_courseId", e.created_at AS "enrollment_createdAt", ' +
+      'p.id AS participant_id, p.email AS participant_email, p.name AS participant_name, p.provider_id AS "participant_providerId", p.created_at AS "participant_createdAt", p.updated_at AS "participant_updatedAt" ' +
+      'FROM grade g ' +
+      'JOIN enrollment e ON e.id = g.enrollment_id ' +
+      'JOIN participant p ON p.id = e.participant_id ' +
+      'WHERE e.course_id = $1',
     [courseId]
   );
 
@@ -92,7 +92,7 @@ export interface CreateGradeInput {
 
 export async function createGrade(input: CreateGradeInput): Promise<DbGrade> {
   const row = await queryOne<DbGrade>(
-    'INSERT INTO "Grade" ("enrollmentId", "type", "score", "date") VALUES ($1,$2,$3,$4) RETURNING *',
+    'INSERT INTO grade (enrollment_id, type, score, date) VALUES ($1,$2,$3,$4) RETURNING id, enrollment_id AS "enrollmentId", type, score, date, created_at AS "createdAt", updated_at AS "updatedAt"',
     [input.enrollmentId, input.type, input.score, input.date ?? new Date()]
   );
 

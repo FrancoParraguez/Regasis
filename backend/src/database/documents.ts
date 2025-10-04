@@ -26,7 +26,7 @@ export async function createDocument(data: {
   createdById: string;
 }): Promise<DbDocument> {
   const row = await queryOne<DbDocument>(
-    'INSERT INTO "Document" ("filename", "originalName", "mimeType", "size", "checksum", "metadata", "createdById") VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING *',
+    'INSERT INTO document (filename, original_name, mime_type, size, checksum, metadata, created_by_id) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id, filename, original_name AS "originalName", mime_type AS "mimeType", size, checksum, url, metadata, created_by_id AS "createdById", provider_id AS "providerId", course_id AS "courseId", created_at AS "createdAt", updated_at AS "updatedAt"',
     [
       data.filename,
       data.originalName,
@@ -47,18 +47,18 @@ export async function updateDocument(id: string, data: { providerId?: string | n
   const values: unknown[] = [id];
 
   if (Object.prototype.hasOwnProperty.call(data, "providerId")) {
-    setStatements.push(`"providerId" = $${values.length + 1}`);
+    setStatements.push(`provider_id = $${values.length + 1}`);
     values.push(data.providerId ?? null);
   }
 
   if (Object.prototype.hasOwnProperty.call(data, "courseId")) {
-    setStatements.push(`"courseId" = $${values.length + 1}`);
+    setStatements.push(`course_id = $${values.length + 1}`);
     values.push(data.courseId ?? null);
   }
 
   if (setStatements.length === 0) return;
 
-  setStatements.push(`"updatedAt" = CURRENT_TIMESTAMP`);
-  const sql = `UPDATE "Document" SET ${setStatements.join(", ")} WHERE "id" = $1`;
+  setStatements.push(`updated_at = CURRENT_TIMESTAMP`);
+  const sql = `UPDATE document SET ${setStatements.join(", ")} WHERE id = $1`;
   await query(sql, values);
 }

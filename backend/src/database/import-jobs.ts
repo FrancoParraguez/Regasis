@@ -29,7 +29,7 @@ export async function createImportJob(data: {
   startedAt?: Date | null;
 }): Promise<DbImportJob> {
   const row = await queryOne<DbImportJob>(
-    'INSERT INTO "ImportJob" ("kind", "status", "documentId", "createdById", "totalRows", "startedAt") VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+    'INSERT INTO import_job (kind, status, document_id, created_by_id, total_rows, started_at) VALUES ($1,$2,$3,$4,$5,$6) RETURNING id, status, kind, provider_id AS "providerId", course_id AS "courseId", document_id AS "documentId", created_by_id AS "createdById", total_rows AS "totalRows", processed_rows AS "processedRows", success_count AS "successCount", failure_count AS "failureCount", error_message AS "errorMessage", started_at AS "startedAt", completed_at AS "completedAt", created_at AS "createdAt", updated_at AS "updatedAt"',
     [
       data.kind,
       data.status,
@@ -54,44 +54,44 @@ export async function updateImportJob(id: string, data: Partial<{
   errorMessage: string | null;
   completedAt: Date | null;
 }>): Promise<void> {
-  const setStatements: string[] = ['"updatedAt" = CURRENT_TIMESTAMP'];
+  const setStatements: string[] = ['updated_at = CURRENT_TIMESTAMP'];
   const values: unknown[] = [id];
 
   if (data.status !== undefined) {
-    setStatements.push(`"status" = $${values.length + 1}`);
+    setStatements.push(`status = $${values.length + 1}`);
     values.push(data.status);
   }
   if (data.providerId !== undefined) {
-    setStatements.push(`"providerId" = $${values.length + 1}`);
+    setStatements.push(`provider_id = $${values.length + 1}`);
     values.push(data.providerId);
   }
   if (data.courseId !== undefined) {
-    setStatements.push(`"courseId" = $${values.length + 1}`);
+    setStatements.push(`course_id = $${values.length + 1}`);
     values.push(data.courseId);
   }
   if (data.processedRows !== undefined) {
-    setStatements.push(`"processedRows" = $${values.length + 1}`);
+    setStatements.push(`processed_rows = $${values.length + 1}`);
     values.push(data.processedRows);
   }
   if (data.successCount !== undefined) {
-    setStatements.push(`"successCount" = $${values.length + 1}`);
+    setStatements.push(`success_count = $${values.length + 1}`);
     values.push(data.successCount);
   }
   if (data.failureCount !== undefined) {
-    setStatements.push(`"failureCount" = $${values.length + 1}`);
+    setStatements.push(`failure_count = $${values.length + 1}`);
     values.push(data.failureCount);
   }
   if (data.errorMessage !== undefined) {
-    setStatements.push(`"errorMessage" = $${values.length + 1}`);
+    setStatements.push(`error_message = $${values.length + 1}`);
     values.push(data.errorMessage);
   }
   if (data.completedAt !== undefined) {
-    setStatements.push(`"completedAt" = $${values.length + 1}`);
+    setStatements.push(`completed_at = $${values.length + 1}`);
     values.push(data.completedAt);
   }
 
   if (setStatements.length === 1) return;
 
-  const sql = `UPDATE "ImportJob" SET ${setStatements.join(", ")} WHERE "id" = $1`;
+  const sql = `UPDATE import_job SET ${setStatements.join(", ")} WHERE id = $1`;
   await query(sql, values);
 }

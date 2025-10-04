@@ -15,8 +15,8 @@ export async function upsertParticipantByEmail(data: {
   providerId?: string | null;
 }): Promise<DbParticipant> {
   const row = await queryOne<DbParticipant>(
-    'INSERT INTO "Participant" ("email", "name", "providerId") VALUES ($1,$2,$3) ' +
-      'ON CONFLICT ("email") DO UPDATE SET "name" = EXCLUDED."name", "providerId" = EXCLUDED."providerId", "updatedAt" = CURRENT_TIMESTAMP RETURNING *',
+    'INSERT INTO participant (email, name, provider_id) VALUES ($1,$2,$3) ' +
+      'ON CONFLICT (email) DO UPDATE SET name = EXCLUDED.name, provider_id = EXCLUDED.provider_id, updated_at = CURRENT_TIMESTAMP RETURNING id, email, name, provider_id AS "providerId", created_at AS "createdAt", updated_at AS "updatedAt"',
     [data.email, data.name, data.providerId ?? null]
   );
 
