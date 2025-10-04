@@ -124,7 +124,7 @@ const users: DemoUser[] = [
     id: "demo-admin",
     email: "admin@org",
     name: "Admin",
-    password: "$2b$10$vL56KzxMpswj5SP8yNQqAuc80Cgmw0DttQbHW6Fy4M4TwWCeekeIG",
+    password: "$2b$10$/CfVruRtv68zrqAakpRal.yNpNlaajxcS/sFdnG6H5kZvr4W5yS1q",
     role: "ADMIN",
     providerId,
     firstName: "Admin",
