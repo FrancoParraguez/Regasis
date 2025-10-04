@@ -1,6 +1,11 @@
 import api from "./http";
 
-export type AttendanceState = "PRESENTE" | "AUSENTE" | "JUSTIFICADO";
+export type AttendanceState =
+  | "PRESENTE"
+  | "AUSENTE"
+  | "JUSTIFICADO"
+  | "TARDANZA"
+  | "SALIDA_ANTICIPADA";
 
 export type AttendanceItemDTO = {
   id: string;

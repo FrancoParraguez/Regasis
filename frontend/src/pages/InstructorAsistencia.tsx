@@ -13,6 +13,14 @@ type SessionOption = { id: string; label: string };
 
 type AttendanceRow = AttendanceItemDTO & { observation?: string | null };
 
+const attendanceStates: AttendanceState[] = [
+  "PRESENTE",
+  "AUSENTE",
+  "JUSTIFICADO",
+  "TARDANZA",
+  "SALIDA_ANTICIPADA"
+];
+
 export default function InstructorAsistencia() {
   const [sessionId, setSessionId] = useState<string>("");
   const [sesiones, setSesiones] = useState<SessionOption[]>([]);
@@ -53,19 +61,6 @@ export default function InstructorAsistencia() {
     };
   }, [sessionId]);
 
-  function toggle(enrollmentId: string) {
-    setData((previous) =>
-      previous.map((item) =>
-        item.enrollment.id === enrollmentId
-          ? {
-              ...item,
-              state: item.state === "PRESENTE" ? "AUSENTE" : "PRESENTE"
-            }
-          : item
-      )
-    );
-  }
-
   async function save() {
     const items = data.map((item) => ({
       enrollmentId: item.enrollment.id,
@@ -82,13 +77,29 @@ export default function InstructorAsistencia() {
       <span className="font-medium">{item.enrollment.participant.name}</span>
     </div>,
     item.enrollment.course.code,
-    <Button
-      key={`${item.enrollment.id}-btn`}
-      onClick={() => toggle(item.enrollment.id)}
-      variant={item.state === "PRESENTE" ? "accent" : "ghost"}
+    <select
+      key={`${item.enrollment.id}-state`}
+      className="input"
+      value={item.state}
+      onChange={(event) =>
+        setData((previous) =>
+          previous.map((entry) =>
+            entry.enrollment.id === item.enrollment.id
+              ? {
+                  ...entry,
+                  state: event.target.value as AttendanceState
+                }
+              : entry
+          )
+        )
+      }
     >
-      {item.state}
-    </Button>,
+      {attendanceStates.map((state) => (
+        <option key={state} value={state}>
+          {state}
+        </option>
+      ))}
+    </select>,
     <Input
       key={`${item.enrollment.id}-obs`}
       value={item.observation ?? ""}
