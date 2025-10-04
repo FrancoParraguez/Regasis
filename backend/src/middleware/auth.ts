@@ -26,11 +26,13 @@ export function auth(required = true) {
     try {
       const payload = jwt.verify(token, env.JWT_SECRET) as TokenPayload | string;
       if (typeof payload === "string") {
+        if (!required) return next();
         return res.status(401).json({ error: "Invalid token" });
       }
 
       const { sub, role, providerId = null } = payload;
       if (!sub || !role) {
+        if (!required) return next();
         return res.status(401).json({ error: "Invalid token" });
       }
 
@@ -38,6 +40,7 @@ export function auth(required = true) {
       attachUser(req, user);
       next();
     } catch {
+      if (!required) return next();
       return res.status(401).json({ error: "Invalid token" });
     }
   };
