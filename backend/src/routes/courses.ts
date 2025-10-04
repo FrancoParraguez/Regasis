@@ -7,8 +7,6 @@ import {
   deleteDemoCourse
 } from "../services/demo-data.js";
 import { isDatabaseUnavailable } from "../utils/database.js";
-import type { GradeType } from "../types/grades.js";
-import type { CourseStatus } from "../types/courses.js";
 import {
   listCourses,
   createCourse as createCourseRecord,
@@ -32,14 +30,6 @@ router.get(
   }
 );
 
-interface EvaluationSchemeInput {
-  label: string;
-  gradeType: GradeType;
-  weight: number;
-  minScore?: number;
-  maxScore?: number;
-}
-
 interface CourseBody {
   code: string;
   name: string;
@@ -47,47 +37,13 @@ interface CourseBody {
   endDate: string;
   providerId: string;
   instructorIds?: string[];
-  description?: string;
-  location?: string;
-  modality?: string;
-  status?: CourseStatus;
-  evaluationSchemes?: EvaluationSchemeInput[];
 }
 
 router.post(
   "/",
   requireRole("ADMIN"),
   async (req: Request<unknown, unknown, CourseBody>, res: Response, next: NextFunction) => {
-    const {
-      code,
-      name,
-      startDate,
-      endDate,
-      providerId,
-      instructorIds,
-      description,
-      location,
-      modality,
-      status,
-      evaluationSchemes
-    } = req.body;
-
-    const trimmedDescription = description?.trim();
-    const trimmedLocation = location?.trim();
-    const trimmedModality = modality?.trim();
-    const courseStatuses: CourseStatus[] = ["DRAFT", "IN_PROGRESS", "COMPLETED", "CANCELLED"];
-    const validStatus = status && courseStatuses.includes(status) ? status : undefined;
-    const parsedEvaluationSchemes = (evaluationSchemes ?? [])
-      .filter((scheme): scheme is EvaluationSchemeInput =>
-        Boolean(scheme?.label) && typeof scheme.weight === "number"
-      )
-      .map((scheme) => ({
-        label: scheme.label.trim(),
-        gradeType: scheme.gradeType,
-        weight: scheme.weight,
-        minScore: scheme.minScore ?? 0,
-        maxScore: scheme.maxScore ?? 20
-      }));
+    const { code, name, startDate, endDate, providerId, instructorIds } = req.body;
 
     try {
       const course = await createCourseRecord({
@@ -96,12 +52,7 @@ router.post(
         startDate: new Date(startDate),
         endDate: new Date(endDate),
         providerId,
-        description: trimmedDescription,
-        location: trimmedLocation,
-        modality: trimmedModality,
-        status: validStatus,
-        instructorIds,
-        evaluationSchemes: parsedEvaluationSchemes
+        instructorIds
       });
       return res.status(201).json(course);
     } catch (error) {
@@ -124,12 +75,7 @@ router.post(
           startDate,
           endDate,
           providerId,
-          instructorIds,
-          description: trimmedDescription,
-          location: trimmedLocation,
-          modality: trimmedModality,
-          status: validStatus,
-          evaluationSchemes: parsedEvaluationSchemes
+          instructorIds
         });
         return res.status(201).json(course);
       } catch (creationError) {

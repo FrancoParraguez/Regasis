@@ -13,19 +13,6 @@ export type GradeDTO = {
   };
 };
 
-export type GradeImportSummary = {
-  /** Total de registros procesados durante la carga. */
-  total: number;
-  /** Cantidad de registros creados. */
-  created: number;
-  /** Cantidad de registros actualizados. */
-  updated: number;
-  /** Cantidad de registros omitidos. */
-  skipped: number;
-  /** Listado de errores asociados a filas específicas. */
-  errors: string[];
-};
-
 type ListarNotasOptions = {
   /** Página a solicitar (base 1). */
   page?: number;
@@ -48,42 +35,3 @@ export async function crearNota(input: { enrollmentId: string; type: GradeType; 
   return data;
 }
 
-export type GradeUpdateMode = "missing" | "all";
-
-type CargarNotasOptions = {
-  /** Evaluación a la que corresponde la carga. */
-  evaluation: GradeType;
-  /** Determina si se reemplazan todas las notas existentes o sólo las faltantes. */
-  mode: GradeUpdateMode;
-  /**
-   * Callback opcional para informar progreso en formato de porcentaje
-   * (0 a 100).
-   */
-  onProgress?: (percentage: number) => void;
-};
-
-export async function cargarNotasDesdeArchivo(
-  courseId: string,
-  file: File,
-  { evaluation, mode, onProgress }: CargarNotasOptions
-) {
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("evaluation", evaluation);
-  formData.append("mode", mode);
-
-  const { data } = await api.post<GradeImportSummary>(
-    `/notas/course/${courseId}/importar`,
-    formData,
-    {
-      headers: { "Content-Type": "multipart/form-data" },
-      onUploadProgress: (event) => {
-        if (!event.total || !onProgress) return;
-        const percentage = Math.round((event.loaded / event.total) * 100);
-        onProgress(percentage);
-      }
-    }
-  );
-
-  return data;
-}
