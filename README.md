@@ -1,8 +1,11 @@
 
 ```
 Reinsercion
+├─ .env.example
 ├─ backend
 │  ├─ .dockerignore
+│  ├─ .env
+│  ├─ .env.example
 │  ├─ Dockerfile
 │  ├─ package-lock.json
 │  ├─ package.json
@@ -44,13 +47,9 @@ Reinsercion
 │  │  ├─ types
 │  │  │  ├─ attendance.ts
 │  │  │  ├─ auth.ts
-│  │  │  ├─ bcrypt.d.ts
-│  │  │  ├─ bcryptjs.d.ts
 │  │  │  ├─ courses.ts
-│  │  │  ├─ express.d.ts
 │  │  │  ├─ grades.ts
 │  │  │  ├─ imports.ts
-│  │  │  ├─ pg.d.ts
 │  │  │  └─ roles.ts
 │  │  └─ utils
 │  │     ├─ crypto.ts
@@ -62,6 +61,7 @@ Reinsercion
 ├─ docker-compose.yml
 ├─ frontend
 │  ├─ .dockerignore
+│  ├─ .env.example
 │  ├─ Dockerfile
 │  ├─ eslint.config.js
 │  ├─ index.html
@@ -113,8 +113,6 @@ Reinsercion
 │  └─ vite.config.ts
 ├─ package-lock.json
 ├─ package.json
-├─ README.md
-└─ scripts
-   └─ dev.js
+└─ README.md
 
 ```
